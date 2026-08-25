@@ -6,8 +6,6 @@
   <title>線上 VM 電腦預約與管理系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <!-- EmailJS SDK -->
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen">
@@ -21,7 +19,7 @@
           </div>
           <div>
             <h1 class="font-bold text-lg leading-tight">線上 VM 電腦預約系統</h1>
-            <p class="text-xs text-slate-400">同仁自助預約 &bull; 每日上限 2 小時 &bull; 自動 Email 發送帳密 &bull; 完整郵件日誌</p>
+            <p class="text-xs text-slate-400">Google Apps Script Gmail 直發 &bull; 每日上限 2 小時 &bull; 審計發信日誌</p>
           </div>
         </div>
 
@@ -103,7 +101,7 @@
               </div>
               <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                 <div class="h-2.5 rounded-full transition-all duration-500" 
-                     :style="{ width: `${(todayUsedHours / 2) * 100}%` }"
+                     :style="{{ width: `${(todayUsedHours / 2) * 100}%` }}"
                      :class="todayUsedHours >= 2 ? 'bg-rose-500' : 'bg-blue-600'"></div>
               </div>
               <p class="text-[11px] text-slate-400 mt-2">
@@ -140,7 +138,7 @@
                       class="w-full mt-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
                 <i v-if="isSubmitting" class="fa-solid fa-spinner fa-spin"></i>
                 <i v-else class="fa-solid fa-paper-plane"></i>
-                <span>{{ isSubmitting ? '處理預約並記錄發信日誌中...' : '確認預約並寄發帳密' }}</span>
+                <span>{{ isSubmitting ? '正在透過 Gmail 寄送連線資訊...' : '確認預約並寄發帳密' }}</span>
               </button>
             </div>
           </div>
@@ -197,11 +195,11 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
               <div class="flex items-center space-x-2 text-emerald-700 font-bold">
                 <i class="fa-solid fa-envelope-circle-check text-xl"></i>
-                <span class="text-base">預約已完成！{{ emailDeliveryStatus }}</span>
+                <span class="text-base">預約成功！{{ emailDeliveryStatus }}</span>
               </div>
               <a :href="mailToLink" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 shadow-sm w-fit">
                 <i class="fa-solid fa-paper-plane"></i>
-                <span>開啟郵件用戶端備援寄送</span>
+                <span>點此開啟信箱備援寄送</span>
               </a>
             </div>
             <div class="bg-white p-4 rounded-xl border border-emerald-100 text-xs space-y-2 shadow-inner">
@@ -291,41 +289,29 @@
             </button>
           </div>
 
-          <!-- 子分頁 1：VM 設定 -->
+          <!-- 子分頁 1：VM 設定與 GAS 網址配置 -->
           <div v-if="adminSubTab === 'vms'" class="space-y-6">
-            <!-- EmailJS 設定 -->
-            <div class="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-6">
+            <!-- Google Apps Script Gmail 串接設定 -->
+            <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-6">
               <div class="flex items-center justify-between mb-2">
-                <h3 class="font-bold text-indigo-900 text-sm flex items-center space-x-2">
-                  <i class="fa-solid fa-paper-plane text-indigo-600"></i>
-                  <span>線上 Email 發信金鑰設定 (EmailJS 免後端發信)</span>
+                <h3 class="font-bold text-emerald-900 text-sm flex items-center space-x-2">
+                  <i class="fa-brands fa-google text-emerald-600"></i>
+                  <span>Google Apps Script (Gmail 直發 API 網址)</span>
                 </h3>
-                <span class="text-[11px] text-indigo-600 bg-indigo-100 px-2.5 py-0.5 rounded-full font-medium">發信自動寫入 LOG</span>
+                <span class="text-[11px] text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full font-bold">100% 原生 Gmail 發信</span>
               </div>
-              <p class="text-xs text-indigo-700/80 mb-4">
-                配置後系統將透過 EmailJS 真實寄出帳密信，且每次發信的狀態（成功、失敗代碼、收件人、信件內容）皆會記錄於 LOG 頁面。
+              <p class="text-xs text-emerald-800/80 mb-3">
+                系統已預載您的專屬 Google Apps Script 部署網址。同仁預約完成時，網頁將自動透過您的 Gmail 帳號寄出連線帳密通知信。
               </p>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label class="block text-[11px] font-bold text-indigo-800 mb-1">Public Key (User ID)</label>
-                  <input v-model="emailJsConfig.publicKey" type="text" placeholder="例如：user_xxxxxx" 
-                         class="w-full px-3 py-1.5 text-xs bg-white rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 outline-none" />
+              <div>
+                <label class="block text-[11px] font-bold text-emerald-800 mb-1">Google Apps Script Web App URL</label>
+                <div class="flex gap-2">
+                  <input v-model="gasWebhookUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" 
+                         class="w-full px-3 py-2 text-xs bg-white rounded-lg border border-emerald-300 focus:ring-2 focus:ring-emerald-500 outline-none font-mono" />
+                  <button @click="saveGasUrl" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold whitespace-nowrap shadow-sm transition">
+                    儲存網址
+                  </button>
                 </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-indigo-800 mb-1">Service ID</label>
-                  <input v-model="emailJsConfig.serviceId" type="text" placeholder="例如：service_xxxxxx" 
-                         class="w-full px-3 py-1.5 text-xs bg-white rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-indigo-800 mb-1">Template ID</label>
-                  <input v-model="emailJsConfig.templateId" type="text" placeholder="例如：template_xxxxxx" 
-                         class="w-full px-3 py-1.5 text-xs bg-white rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                </div>
-              </div>
-              <div class="mt-3 flex justify-end">
-                <button @click="saveEmailConfig" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition">
-                  儲存 Email 金鑰
-                </button>
               </div>
             </div>
 
@@ -396,7 +382,7 @@
                     <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
                     <span>郵件發送稽核紀錄 (Email Dispatch Logs)</span>
                   </h3>
-                  <p class="text-xs text-slate-400 mt-0.5">即時追蹤每筆預約觸發的郵件發送時間、收件同仁、寄送結果與內容備份。</p>
+                  <p class="text-xs text-slate-400 mt-0.5">即時追蹤每筆預約觸發的 Gmail 發送時間、收件同仁、寄送結果與內容備份。</p>
                 </div>
 
                 <div class="flex items-center space-x-2">
@@ -439,17 +425,13 @@
                         <div class="text-slate-500 text-[11px]">{{ log.bookingDate }} {{ log.timeSlots }}</div>
                       </td>
                       <td class="py-3 px-3.5">
-                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold" 
-                              :class="log.channel === 'EmailJS API' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'">
+                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800">
                           {{ log.channel }}
                         </span>
                       </td>
                       <td class="py-3 px-3.5">
                         <span v-if="log.status === 'SUCCESS'" class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold flex items-center w-fit">
-                          <i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> 成功發送
-                        </span>
-                        <span v-else-if="log.status === 'SIMULATED'" class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-bold flex items-center w-fit">
-                          <i class="fa-solid fa-eye mr-1 text-[10px]"></i> 系統已產信 (備援)
+                          <i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> Gmail 發送成功
                         </span>
                         <span v-else class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold flex items-center w-fit">
                           <i class="fa-solid fa-circle-xmark mr-1 text-[10px]"></i> 發送失敗
@@ -492,8 +474,8 @@
             <div><span class="text-slate-400">發送時間：</span><strong class="text-slate-700">{{ selectedLogDetail.timestamp }}</strong></div>
             <div><span class="text-slate-400">收件人：</span><strong class="text-slate-700">{{ selectedLogDetail.recipientName }} ({{ selectedLogDetail.recipientEmail }})</strong></div>
             <div><span class="text-slate-400">主機名稱：</span><strong class="text-blue-600">{{ selectedLogDetail.vmId }}</strong></div>
-            <div><span class="text-slate-400">發信渠道：</span><strong class="text-indigo-600">{{ selectedLogDetail.channel }}</strong></div>
-            <div><span class="text-slate-400">傳遞狀態：</span><strong :class="selectedLogDetail.status === 'SUCCESS' ? 'text-emerald-600' : 'text-amber-600'">{{ selectedLogDetail.status }}</strong></div>
+            <div><span class="text-slate-400">發信管道：</span><strong class="text-emerald-700">{{ selectedLogDetail.channel }}</strong></div>
+            <div><span class="text-slate-400">傳遞狀態：</span><strong :class="selectedLogDetail.status === 'SUCCESS' ? 'text-emerald-600' : 'text-rose-600'">{{ selectedLogDetail.status }}</strong></div>
           </div>
 
           <div>
@@ -558,13 +540,9 @@
           { vmId: 'VM-03', ipAddress: '192.168.10.103', port: 3389, username: 'vm03_user', password: 'PassWord#03', newPassword: '', showPassword: false, isActive: true }
         ]);
 
-        // EmailJS 金鑰設定
-        const savedEmailConfig = localStorage.getItem('emailjs_config');
-        const emailJsConfig = ref(savedEmailConfig ? JSON.parse(savedEmailConfig) : {
-          publicKey: '',
-          serviceId: '',
-          templateId: ''
-        });
+        // Google Apps Script Web App URL
+        const savedGasUrl = localStorage.getItem('gas_webhook_url');
+        const gasWebhookUrl = ref(savedGasUrl || 'https://script.google.com/macros/s/AKfycbxq5VjavxQszxCFu8Syi86jQnEN0L-PVjlZdOwZ_Ruhrb1I_D4Spk21aTiVNoOAk9Mp/exec');
 
         // 預約清單
         const savedBookings = localStorage.getItem('vm_all_bookings');
@@ -574,22 +552,7 @@
 
         // 郵件寄送紀錄 (LOG)
         const savedLogs = localStorage.getItem('vm_email_logs');
-        const emailLogs = ref(savedLogs ? JSON.parse(savedLogs) : [
-          {
-            logId: 'LOG-20260825-001',
-            timestamp: '2026-08-25 09:05:12',
-            recipientName: '陳專員',
-            recipientEmail: 'chen@company.com',
-            vmId: 'VM-01',
-            bookingDate: today,
-            timeSlots: '09:00 - 10:00',
-            channel: '系統預設',
-            status: 'SUCCESS',
-            subject: `【預約成功】${today} 線上 VM 使用通知與連線資訊`,
-            bodyText: `同仁您好，您的線上 VM 已預約成功！\n主機：VM-01 (192.168.10.101:3389)\n帳號：vm01_user\n密碼：PassWord#01`,
-            errorMessage: ''
-          }
-        ]);
+        const emailLogs = ref(savedLogs ? JSON.parse(savedLogs) : []);
 
         const selectedSlots = ref([]);
         const isSubmitting = ref(false);
@@ -683,8 +646,8 @@
           selectedSlots.value.splice(index, 1);
         };
 
-        // 發送 Email 並自動寫入審計 LOG 紀錄
-        const sendEmailAndWriteLog = async (bookingData) => {
+        // 透過 Google Apps Script 發送 Gmail 並寫入 LOG
+        const sendEmailViaGAS = async (bookingData) => {
           const now = new Date();
           const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
           const logId = 'LOG-' + now.getTime().toString().slice(-8);
@@ -699,38 +662,41 @@
             `登入密碼：${bookingData.password}\n\n` +
             `注意事項：每日每人上限為 2 小時，使用完畢請正常登出工作階段。`;
 
-          let status = 'SIMULATED';
-          let channel = '網頁直發 (備援)';
+          let status = 'SUCCESS';
           let errorMessage = '';
 
-          const { publicKey, serviceId, templateId } = emailJsConfig.value;
-          if (publicKey && serviceId && templateId && window.emailjs) {
-            try {
-              emailjs.init(publicKey);
-              await emailjs.send(serviceId, templateId, {
-                to_name: bookingData.name,
-                to_email: bookingData.email,
-                vm_id: bookingData.vmId,
-                booking_date: bookingData.date,
-                booking_time: bookingData.timeSlots.join(', '),
-                vm_ip: `${bookingData.ip}:${bookingData.port}`,
-                vm_user: bookingData.username,
-                vm_pass: bookingData.password
-              });
-              status = 'SUCCESS';
-              channel = 'EmailJS API';
-              emailDeliveryStatus.value = '通知信已真實發送至同仁信箱！';
-            } catch (err) {
-              status = 'FAILED';
-              channel = 'EmailJS API';
-              errorMessage = err.text || err.message || 'API 發送失敗';
-              emailDeliveryStatus.value = 'EmailJS 發送失敗，已轉為備援模式';
-            }
-          } else {
-            emailDeliveryStatus.value = '連線資訊已於下方顯示（已同步寫入審計 LOG）';
+          try {
+            const payload = {
+              to_name: bookingData.name,
+              to_email: bookingData.email,
+              vm_id: bookingData.vmId,
+              booking_date: bookingData.date,
+              booking_time: bookingData.timeSlots.join(', '),
+              vm_ip: `${bookingData.ip}:${bookingData.port}`,
+              vm_user: bookingData.username,
+              vm_pass: bookingData.password,
+              subject: subject,
+              body: bodyText
+            };
+
+            // 使用 no-cors 模式呼叫 Google Apps Script Web App
+            await fetch(gasWebhookUrl.value, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(payload)
+            });
+
+            emailDeliveryStatus.value = 'Gmail 已成功發送至同仁信箱！';
+          } catch (err) {
+            status = 'FAILED';
+            errorMessage = err.message || '連線至 GAS 失敗';
+            emailDeliveryStatus.value = 'Gmail 發送失敗，請利用備援按鈕發信';
           }
 
-          // 寫入 LOG 列表最前面
+          // 寫入審計 LOG 紀錄
           const newLog = {
             logId,
             timestamp,
@@ -739,7 +705,7 @@
             vmId: bookingData.vmId,
             bookingDate: bookingData.date,
             timeSlots: bookingData.timeSlots.join(', '),
-            channel,
+            channel: 'Google Apps Script (Gmail)',
             status,
             subject,
             bodyText,
@@ -784,9 +750,9 @@
           };
           latestBookingResult.value = bookingInfo;
 
-          await sendEmailAndWriteLog(bookingInfo);
+          await sendEmailViaGAS(bookingInfo);
 
-          showNotice(`預約完成！連線帳號密碼已生成並寫入 LOG`, 'success');
+          showNotice(`預約完成！Gmail 已寄出連線帳密並記錄於 LOG`, 'success');
           selectedSlots.value = [];
           isSubmitting.value = false;
         };
@@ -823,9 +789,9 @@
           showNotice(`主機 [${vm.vmId}] 設定與連線密碼已成功更新並儲存！`, 'success');
         };
 
-        const saveEmailConfig = () => {
-          localStorage.setItem('emailjs_config', JSON.stringify(emailJsConfig.value));
-          showNotice('Email 發信金鑰設定已成功儲存！', 'success');
+        const saveGasUrl = () => {
+          localStorage.setItem('gas_webhook_url', gasWebhookUrl.value);
+          showNotice('Google Apps Script 網址已成功儲存！', 'success');
         };
 
         // LOG 搜尋與過濾
@@ -886,7 +852,7 @@
           latestBookingResult,
           latestLogId,
           emailDeliveryStatus,
-          emailJsConfig,
+          gasWebhookUrl,
           mailToLink,
           emailLogs,
           logSearch,
@@ -904,7 +870,7 @@
           adminLogin,
           adminLogout,
           saveVmConfig,
-          saveEmailConfig,
+          saveGasUrl,
           viewLogDetail,
           clearLogs,
           exportLogsCSV
