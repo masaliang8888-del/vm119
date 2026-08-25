@@ -4,37 +4,45 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>線上 VM 電腦預約與管理系統</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Primary CDN + Inline Fallback Styling for zero-dependency rendering -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" onerror="this.onerror=null;this.href='';">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
+  <style>
+    /* Robust Base Fallback Styles in case external Tailwind is blocked by intranet/firewall */
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 0; }
+    .max-w-7xl { max-width: 80rem; margin-left: auto; margin-right: auto; }
+    .slot-available { background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; cursor: pointer; }
+    .slot-available:hover { background-color: #d1fae5; }
+    .slot-selected { background-color: #2563eb !important; border-color: #1d4ed8 !important; color: #ffffff !important; font-weight: bold; }
+    .slot-booked { background-color: #e2e8f0; border: 1px solid #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+  </style>
 </head>
-<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen">
+<body class="bg-slate-100 antialiased min-h-screen">
   <div id="app" class="pb-12">
     <!-- Navbar -->
     <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-xl shadow-inner">
-            <i class="fa-solid fa-desktop"></i>
+          <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-xl text-white shadow-inner">
+            VM
           </div>
           <div>
             <h1 class="font-bold text-lg leading-tight">線上 VM 電腦預約系統</h1>
-            <p class="text-xs text-slate-400">Google Apps Script Gmail 直發 &bull; 每日上限 2 小時 &bull; 審計發信日誌</p>
+            <p class="text-xs text-slate-400">同仁自助預約 &bull; 每日上限 2 小時 &bull; 自動 Gmail 發送帳密 &bull; 郵件紀錄</p>
           </div>
         </div>
 
         <nav class="flex items-center space-x-2">
           <button @click="currentTab = 'booking'" 
                   :class="currentTab === 'booking' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800'"
-                  class="px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2">
-            <i class="fa-regular fa-calendar-check"></i>
-            <span>同仁線上預約</span>
+                  class="px-4 py-2 rounded-lg text-sm font-medium transition">
+            同仁線上預約
           </button>
           <button @click="currentTab = 'admin'" 
                   :class="currentTab === 'admin' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'"
-                  class="px-4 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2">
-            <i class="fa-solid fa-shield-halved"></i>
-            <span>管理員後台</span>
+                  class="px-4 py-2 rounded-lg text-sm font-medium transition">
+            管理員後台
           </button>
         </nav>
       </div>
@@ -42,52 +50,46 @@
 
     <!-- Main Container -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-      <!-- Alerts -->
+      <!-- 提示訊息 Alerts -->
       <div v-if="notification.show" 
-           :class="notification.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'"
+           :class="notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'"
            class="p-4 mb-6 rounded-xl shadow-lg flex items-center justify-between transition-all duration-300">
-        <div class="flex items-center space-x-3">
-          <i :class="notification.type === 'success' ? 'fa-solid fa-circle-check text-xl' : 'fa-solid fa-triangle-exclamation text-xl'"></i>
-          <span class="font-medium text-sm sm:text-base">{{ notification.message }}</span>
-        </div>
-        <button @click="notification.show = false" class="text-white hover:text-slate-200">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <span class="font-medium text-sm sm:text-base">{{ notification.message }}</span>
+        <button @click="notification.show = false" class="text-white hover:text-slate-200 font-bold ml-4">✕</button>
       </div>
 
       <!-- ================= 1. 同仁預約前台 ================= -->
       <div v-if="currentTab === 'booking'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- 左側：申請表單與配額狀況 -->
         <div class="lg:col-span-1 space-y-6">
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6">
-            <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center space-x-2">
-              <i class="fa-solid fa-user-pen text-blue-600"></i>
-              <span>填寫同仁申請資訊</span>
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-lg font-bold text-slate-900 mb-4 border-b pb-2">
+              📝 填寫同仁申請資訊
             </h2>
 
             <div class="space-y-4">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">員工編號 / 帳號 <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">員工編號 / 帳號 <span class="text-red-500">*</span></label>
                 <input v-model="userForm.empId" @input="updateUserQuota" type="text" placeholder="例如：EMP0088" 
-                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">同仁姓名 <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">同仁姓名 <span class="text-red-500">*</span></label>
                 <input v-model="userForm.name" type="text" placeholder="請輸入姓名" 
-                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">接收連線資訊 Email <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">接收連線資訊 Email <span class="text-red-500">*</span></label>
                 <input v-model="userForm.email" type="email" placeholder="example@company.com" 
-                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">預約日期 <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">預約日期 <span class="text-red-500">*</span></label>
                 <input v-model="selectedDate" @change="updateUserQuota" type="date" :min="minDate"
-                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
             </div>
 
@@ -95,37 +97,36 @@
             <div class="mt-6 pt-5 border-t border-slate-100">
               <div class="flex justify-between items-center mb-2">
                 <span class="text-xs font-semibold text-slate-600">今日已用配額</span>
-                <span class="text-xs font-bold" :class="todayUsedHours >= 2 ? 'text-rose-600' : 'text-blue-600'">
+                <span class="text-xs font-bold" :class="todayUsedHours >= 2 ? 'text-red-600' : 'text-blue-600'">
                   {{ todayUsedHours }} / 2.0 小時
                 </span>
               </div>
               <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                 <div class="h-2.5 rounded-full transition-all duration-500" 
-                     :style="{{ width: `${(todayUsedHours / 2) * 100}%` }}"
-                     :class="todayUsedHours >= 2 ? 'bg-rose-500' : 'bg-blue-600'"></div>
+                     :style="{ width: `${(todayUsedHours / 2) * 100}%` }"
+                     :class="todayUsedHours >= 2 ? 'bg-red-500' : 'bg-blue-600'"></div>
               </div>
-              <p class="text-[11px] text-slate-400 mt-2">
-                <i class="fa-solid fa-circle-info mr-1"></i>每位同仁每日累計預約上限為 2 小時。
+              <p class="text-xs text-slate-400 mt-2">
+                ℹ️ 每位同仁每日累計預約上限為 2 小時。
               </p>
             </div>
           </div>
 
           <!-- 預約確認按鈕卡片 -->
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <h3 class="font-bold text-slate-900 text-sm mb-3">本次選取預約清單</h3>
             <div v-if="selectedSlots.length === 0" class="text-center py-6 text-slate-400 text-sm">
-              <i class="fa-regular fa-clock text-2xl mb-1 block"></i>
               尚未在右側時段表勾選時段
             </div>
             <div v-else class="space-y-2">
               <div v-for="(slot, idx) in selectedSlots" :key="idx" 
-                   class="flex items-center justify-between p-2.5 bg-blue-50/70 border border-blue-100 rounded-lg text-xs">
+                   class="flex items-center justify-between p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs">
                 <div>
                   <span class="font-bold text-blue-700 mr-2">[{{ slot.vmId }}]</span>
                   <span class="text-slate-700">{{ slot.time }} (1小時)</span>
                 </div>
-                <button @click="removeSlot(idx)" class="text-rose-500 hover:text-rose-700">
-                  <i class="fa-solid fa-trash-can"></i>
+                <button @click="removeSlot(idx)" class="text-red-500 hover:text-red-700 font-bold">
+                  ✕ 移除
                 </button>
               </div>
 
@@ -135,10 +136,8 @@
               </div>
 
               <button @click="submitBooking" :disabled="isSubmitting || selectedSlots.length === 0"
-                      class="w-full mt-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
-                <i v-if="isSubmitting" class="fa-solid fa-spinner fa-spin"></i>
-                <i v-else class="fa-solid fa-paper-plane"></i>
-                <span>{{ isSubmitting ? '正在透過 Gmail 寄送連線資訊...' : '確認預約並寄發帳密' }}</span>
+                      class="w-full mt-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed">
+                {{ isSubmitting ? '正在透過 Gmail 寄送連線資訊...' : '確認預約並寄發帳密' }}
               </button>
             </div>
           </div>
@@ -146,14 +145,14 @@
 
         <!-- 右側：3 台 VM 的時間槽位表 -->
         <div class="lg:col-span-2 space-y-6">
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
               <div>
                 <h2 class="text-lg font-bold text-slate-900">線上 VM 時段預約看板</h2>
                 <p class="text-xs text-slate-500">日期：{{ selectedDate }}（共有 3 台線上電腦可預約）</p>
               </div>
               <div class="flex items-center space-x-3 text-xs">
-                <span class="flex items-center"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-400 mr-1.5 inline-block"></span>可預約</span>
+                <span class="flex items-center"><span class="w-3 h-3 rounded bg-green-100 border border-green-400 mr-1.5 inline-block"></span>可預約</span>
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-blue-600 mr-1.5 inline-block"></span>已選取</span>
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-slate-200 border border-slate-300 mr-1.5 inline-block"></span>已被預約</span>
               </div>
@@ -161,14 +160,14 @@
 
             <!-- 3 台 VM 列表與時段網格 -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
-              <div v-for="vm in vmList" :key="vm.vmId" class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+              <div v-for="vm in vmList" :key="vm.vmId" class="border border-slate-200 rounded-xl p-4 bg-slate-50">
                 <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
                   <div class="flex items-center space-x-2">
-                    <span class="w-2.5 h-2.5 rounded-full" :class="vm.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'"></span>
+                    <span class="w-2.5 h-2.5 rounded-full" :class="vm.isActive ? 'bg-green-500' : 'bg-slate-400'"></span>
                     <span class="font-bold text-slate-800 text-sm">{{ vm.vmId }}</span>
                   </div>
-                  <span class="text-[11px] px-2 py-0.5 rounded font-medium" 
-                        :class="vm.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'">
+                  <span class="text-xs px-2 py-0.5 rounded font-medium" 
+                        :class="vm.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'">
                     {{ vm.isActive ? '正常運行' : '維護中' }}
                   </span>
                 </div>
@@ -180,9 +179,9 @@
                        class="px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition cursor-pointer border">
                     <span>{{ timeSlot }}</span>
                     <span>
-                      <i v-if="isSlotSelected(vm.vmId, timeSlot)" class="fa-solid fa-check"></i>
-                      <span v-else-if="isSlotBooked(vm.vmId, timeSlot)" class="text-[10px] text-slate-500">已預約</span>
-                      <span v-else class="text-[10px] text-emerald-600">可選</span>
+                      <span v-if="isSlotSelected(vm.vmId, timeSlot)">✓ 已選</span>
+                      <span v-else-if="isSlotBooked(vm.vmId, timeSlot)" class="text-xs text-slate-500">已滿</span>
+                      <span v-else class="text-xs text-green-600">可選</span>
                     </span>
                   </div>
                 </div>
@@ -191,29 +190,27 @@
           </div>
 
           <!-- 成功預約通知卡片 (信件預覽與發信狀態) -->
-          <div v-if="latestBookingResult" class="bg-white rounded-2xl shadow-sm border border-emerald-200 p-6 bg-emerald-50/30">
+          <div v-if="latestBookingResult" class="bg-white rounded-2xl shadow-sm border border-green-200 p-6 bg-green-50">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-              <div class="flex items-center space-x-2 text-emerald-700 font-bold">
-                <i class="fa-solid fa-envelope-circle-check text-xl"></i>
+              <div class="flex items-center space-x-2 text-green-800 font-bold">
                 <span class="text-base">預約成功！{{ emailDeliveryStatus }}</span>
               </div>
-              <a :href="mailToLink" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1 shadow-sm w-fit">
-                <i class="fa-solid fa-paper-plane"></i>
-                <span>點此開啟信箱備援寄送</span>
+              <a :href="mailToLink" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold shadow-sm w-fit">
+                ✉️ 點此開啟信箱備援寄送
               </a>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-emerald-100 text-xs space-y-2 shadow-inner">
+            <div class="bg-white p-4 rounded-xl border border-green-100 text-xs space-y-2 shadow-inner">
               <div class="flex justify-between items-center">
                 <p><strong>收件同仁：</strong> {{ latestBookingResult.name }} ({{ latestBookingResult.email }})</p>
-                <span class="text-[11px] text-slate-400">Log ID: {{ latestLogId }}</span>
+                <span class="text-xs text-slate-400">Log ID: {{ latestLogId }}</span>
               </div>
               <p><strong>預約主機：</strong> {{ latestBookingResult.vmId }}</p>
               <p><strong>預約時段：</strong> {{ latestBookingResult.date }} {{ latestBookingResult.timeSlots.join(', ') }}</p>
               <div class="p-3 bg-slate-900 text-slate-100 rounded-lg font-mono mt-2 space-y-1">
                 <p class="text-slate-400">--- 連線資訊 (RDP / 遠端桌面) ---</p>
-                <p>主機連線位址：<span class="text-emerald-400">{{ latestBookingResult.ip }}:{{ latestBookingResult.port }}</span></p>
-                <p>登入帳號：<span class="text-amber-300">{{ latestBookingResult.username }}</span></p>
-                <p>登入密碼：<span class="text-amber-300 font-bold">{{ latestBookingResult.password }}</span></p>
+                <p>主機連線位址：<span class="text-green-400">{{ latestBookingResult.ip }}:{{ latestBookingResult.port }}</span></p>
+                <p>登入帳號：<span class="text-yellow-300">{{ latestBookingResult.username }}</span></p>
+                <p>登入密碼：<span class="text-yellow-300 font-bold">{{ latestBookingResult.password }}</span></p>
               </div>
             </div>
           </div>
@@ -225,10 +222,7 @@
         <!-- 管理員未登入畫面 -->
         <div v-if="!adminAuth.isLoggedIn" class="max-w-md mx-auto my-12 bg-white rounded-2xl shadow-lg border border-slate-200 p-8">
           <div class="text-center mb-6">
-            <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-3 shadow-inner">
-              <i class="fa-solid fa-lock"></i>
-            </div>
-            <h2 class="text-xl font-bold text-slate-900">後台登入授權驗證</h2>
+            <h2 class="text-xl font-bold text-slate-900">🔒 後台登入授權驗證</h2>
             <p class="text-xs text-slate-400 mt-1">請輸入管理員帳號與授權密碼</p>
           </div>
 
@@ -236,12 +230,12 @@
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">管理員帳號</label>
               <input v-model="adminLoginForm.username" type="text" placeholder="請輸入管理員帳號" 
-                     class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" required />
+                     class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 outline-none" required />
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">管理員密碼</label>
               <input v-model="adminLoginForm.password" type="password" placeholder="請輸入密碼" 
-                     class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" required />
+                     class="w-full px-3.5 py-2.5 text-sm rounded-lg border border-slate-300 outline-none" required />
             </div>
             <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow transition">
               驗證並登入後台
@@ -253,9 +247,8 @@
         <div v-else class="space-y-6">
           <div class="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
             <div>
-              <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
-                <i class="fa-solid fa-shield-halved text-indigo-600"></i>
-                <span>VM 伺服器管理與發信審計中樞</span>
+              <h2 class="text-xl font-bold text-slate-900">
+                🛡️ VM 伺服器管理與發信審計中樞
               </h2>
               <p class="text-xs text-slate-500 mt-1">管理 3 台 VM 帳密連線資訊，並追蹤所有同仁郵件通知發送紀錄 (LOG)。</p>
             </div>
@@ -263,7 +256,7 @@
               <span class="text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border">
                 管理員：<strong class="text-slate-800">{{ adminAuth.username }}</strong>
               </span>
-              <button @click="adminLogout" class="px-3.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition">
+              <button @click="adminLogout" class="px-3.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-xs font-bold transition">
                 登出
               </button>
             </div>
@@ -273,16 +266,14 @@
           <div class="flex space-x-2 border-b border-slate-200 pb-3">
             <button @click="adminSubTab = 'vms'" 
                     :class="adminSubTab === 'vms' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
-                    class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2">
-              <i class="fa-solid fa-server"></i>
-              <span>3 台 VM 帳密維護</span>
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition">
+              🖥️ 3 台 VM 帳密維護
             </button>
             <button @click="adminSubTab = 'logs'" 
                     :class="adminSubTab === 'logs' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
-                    class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 relative">
-              <i class="fa-solid fa-envelope-open-text"></i>
-              <span>郵件寄送紀錄 (LOG 驗證)</span>
-              <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]" 
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2">
+              <span>📋 郵件寄送紀錄 (LOG 驗證)</span>
+              <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs" 
                     :class="adminSubTab === 'logs' ? 'bg-indigo-800 text-white' : 'bg-indigo-100 text-indigo-700'">
                 {{ emailLogs.length }}
               </span>
@@ -292,23 +283,22 @@
           <!-- 子分頁 1：VM 設定與 GAS 網址配置 -->
           <div v-if="adminSubTab === 'vms'" class="space-y-6">
             <!-- Google Apps Script Gmail 串接設定 -->
-            <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-6">
+            <div class="bg-green-50 border border-green-200 rounded-2xl p-6">
               <div class="flex items-center justify-between mb-2">
-                <h3 class="font-bold text-emerald-900 text-sm flex items-center space-x-2">
-                  <i class="fa-brands fa-google text-emerald-600"></i>
-                  <span>Google Apps Script (Gmail 直發 API 網址)</span>
+                <h3 class="font-bold text-green-900 text-sm">
+                  ⚡ Google Apps Script (Gmail 直發 API 網址)
                 </h3>
-                <span class="text-[11px] text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full font-bold">100% 原生 Gmail 發信</span>
+                <span class="text-xs text-green-700 bg-green-100 px-2.5 py-0.5 rounded-full font-bold">100% 原生 Gmail 發信</span>
               </div>
-              <p class="text-xs text-emerald-800/80 mb-3">
+              <p class="text-xs text-green-800 mb-3">
                 系統已預載您的專屬 Google Apps Script 部署網址。同仁預約完成時，網頁將自動透過您的 Gmail 帳號寄出連線帳密通知信。
               </p>
               <div>
-                <label class="block text-[11px] font-bold text-emerald-800 mb-1">Google Apps Script Web App URL</label>
+                <label class="block text-xs font-bold text-green-800 mb-1">Google Apps Script Web App URL</label>
                 <div class="flex gap-2">
                   <input v-model="gasWebhookUrl" type="text" placeholder="https://script.google.com/macros/s/.../exec" 
-                         class="w-full px-3 py-2 text-xs bg-white rounded-lg border border-emerald-300 focus:ring-2 focus:ring-emerald-500 outline-none font-mono" />
-                  <button @click="saveGasUrl" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold whitespace-nowrap shadow-sm transition">
+                         class="w-full px-3 py-2 text-xs bg-white rounded-lg border border-green-300 outline-none font-mono" />
+                  <button @click="saveGasUrl" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold whitespace-nowrap shadow-sm transition">
                     儲存網址
                   </button>
                 </div>
@@ -320,16 +310,10 @@
               <div v-for="vm in vmList" :key="vm.vmId" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
                 <div>
                   <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
-                        <i class="fa-solid fa-network-wired"></i>
-                      </div>
-                      <span class="font-bold text-base text-slate-800">{{ vm.vmId }}</span>
-                    </div>
-                    <label class="inline-flex items-center cursor-pointer">
-                      <input type="checkbox" v-model="vm.isActive" class="sr-only peer" />
-                      <div class="w-9 h-5 bg-slate-200 peer-checked:bg-emerald-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all relative"></div>
-                      <span class="ml-2 text-xs font-semibold" :class="vm.isActive ? 'text-emerald-600' : 'text-slate-400'">
+                    <span class="font-bold text-base text-slate-800">{{ vm.vmId }}</span>
+                    <label class="inline-flex items-center cursor-pointer text-xs">
+                      <input type="checkbox" v-model="vm.isActive" class="mr-1.5" />
+                      <span class="font-semibold" :class="vm.isActive ? 'text-green-600' : 'text-slate-400'">
                         {{ vm.isActive ? '啟用' : '維護' }}
                       </span>
                     </label>
@@ -338,24 +322,24 @@
                   <div class="space-y-3.5">
                     <div>
                       <label class="block text-xs font-semibold text-slate-600 mb-1">主機 IP 位址</label>
-                      <input v-model="vm.ipAddress" type="text" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                      <input v-model="vm.ipAddress" type="text" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
                     </div>
 
                     <div>
                       <label class="block text-xs font-semibold text-slate-600 mb-1">連線 Port (預設 RDP 3389)</label>
-                      <input v-model.number="vm.port" type="number" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                      <input v-model.number="vm.port" type="number" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
                     </div>
 
                     <div>
                       <label class="block text-xs font-semibold text-slate-600 mb-1">登入帳號</label>
-                      <input v-model="vm.username" type="text" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                      <input v-model="vm.username" type="text" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
                     </div>
 
                     <div>
                       <label class="block text-xs font-semibold text-slate-600 mb-1">登入密碼 (留空代表不變更)</label>
                       <div class="relative">
                         <input :type="vm.showPassword ? 'text' : 'password'" v-model="vm.newPassword" placeholder="••••••••" 
-                               class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none pr-12" />
+                               class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 outline-none pr-12" />
                         <button type="button" @click="vm.showPassword = !vm.showPassword" class="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-600">
                           {{ vm.showPassword ? '隱藏' : '顯示' }}
                         </button>
@@ -366,7 +350,7 @@
 
                 <div class="mt-6 pt-4 border-t border-slate-100">
                   <button @click="saveVmConfig(vm)" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition">
-                    <i class="fa-solid fa-floppy-disk mr-1"></i> 儲存 {{ vm.vmId }} 設定
+                    💾 儲存 {{ vm.vmId }} 設定
                   </button>
                 </div>
               </div>
@@ -378,21 +362,19 @@
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-5">
                 <div>
-                  <h3 class="font-bold text-slate-900 text-base flex items-center space-x-2">
-                    <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
-                    <span>郵件發送稽核紀錄 (Email Dispatch Logs)</span>
+                  <h3 class="font-bold text-slate-900 text-base">
+                    📋 郵件發送稽核紀錄 (Email Dispatch Logs)
                   </h3>
                   <p class="text-xs text-slate-400 mt-0.5">即時追蹤每筆預約觸發的 Gmail 發送時間、收件同仁、寄送結果與內容備份。</p>
                 </div>
 
                 <div class="flex items-center space-x-2">
                   <input v-model="logSearch" type="text" placeholder="搜尋姓名、Email、主機..." 
-                         class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none w-48" />
-                  <button @click="exportLogsCSV" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm">
-                    <i class="fa-solid fa-file-csv"></i>
-                    <span>匯出 CSV</span>
+                         class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 outline-none w-48" />
+                  <button @click="exportLogsCSV" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold transition shadow-sm">
+                    匯出 CSV
                   </button>
-                  <button @click="clearLogs" class="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition">
+                  <button @click="clearLogs" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg text-xs font-bold transition">
                     清除紀錄
                   </button>
                 </div>
@@ -412,33 +394,33 @@
                       <th class="py-3 px-3.5 text-center">操作</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-slate-100 font-sans">
+                  <tbody class="divide-y divide-slate-100">
                     <tr v-for="log in filteredLogs" :key="log.logId" class="hover:bg-slate-50 transition">
-                      <td class="py-3 px-3.5 font-mono text-[11px] text-slate-500">{{ log.logId }}</td>
+                      <td class="py-3 px-3.5 font-mono text-xs text-slate-500">{{ log.logId }}</td>
                       <td class="py-3 px-3.5 text-slate-600 whitespace-nowrap">{{ log.timestamp }}</td>
                       <td class="py-3 px-3.5">
                         <div class="font-bold text-slate-800">{{ log.recipientName }}</div>
-                        <div class="text-slate-400 text-[11px]">{{ log.recipientEmail }}</div>
+                        <div class="text-slate-400 text-xs">{{ log.recipientEmail }}</div>
                       </td>
                       <td class="py-3 px-3.5">
                         <span class="font-bold text-blue-600">[{{ log.vmId }}]</span>
-                        <div class="text-slate-500 text-[11px]">{{ log.bookingDate }} {{ log.timeSlots }}</div>
+                        <div class="text-slate-500 text-xs">{{ log.bookingDate }} {{ log.timeSlots }}</div>
                       </td>
                       <td class="py-3 px-3.5">
-                        <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">
                           {{ log.channel }}
                         </span>
                       </td>
                       <td class="py-3 px-3.5">
-                        <span v-if="log.status === 'SUCCESS'" class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold flex items-center w-fit">
-                          <i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> Gmail 發送成功
+                        <span v-if="log.status === 'SUCCESS'" class="px-2 py-0.5 rounded bg-green-100 text-green-700 font-bold">
+                          ✓ Gmail 發送成功
                         </span>
-                        <span v-else class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold flex items-center w-fit">
-                          <i class="fa-solid fa-circle-xmark mr-1 text-[10px]"></i> 發送失敗
+                        <span v-else class="px-2 py-0.5 rounded bg-red-100 text-red-700 font-bold">
+                          ✕ 發送失敗
                         </span>
                       </td>
                       <td class="py-3 px-3.5 text-center">
-                        <button @click="viewLogDetail(log)" class="px-2.5 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 rounded text-[11px] font-semibold transition">
+                        <button @click="viewLogDetail(log)" class="px-2.5 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 rounded text-xs font-semibold transition">
                           檢視內容
                         </button>
                       </td>
@@ -456,16 +438,11 @@
     </main>
 
     <!-- 郵件紀錄明細彈窗 (Modal) -->
-    <div v-if="selectedLogDetail" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+    <div v-if="selectedLogDetail" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-screen overflow-y-auto">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div class="flex items-center space-x-2">
-            <i class="fa-solid fa-envelope-circle-check text-indigo-600 text-lg"></i>
-            <h3 class="font-bold text-slate-900 text-base">郵件寄送紀錄詳情</h3>
-          </div>
-          <button @click="selectedLogDetail = null" class="text-slate-400 hover:text-slate-600">
-            <i class="fa-solid fa-xmark text-lg"></i>
-          </button>
+          <h3 class="font-bold text-slate-900 text-base">✉️ 郵件寄送紀錄詳情</h3>
+          <button @click="selectedLogDetail = null" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
         </div>
 
         <div class="space-y-3 text-xs">
@@ -474,8 +451,8 @@
             <div><span class="text-slate-400">發送時間：</span><strong class="text-slate-700">{{ selectedLogDetail.timestamp }}</strong></div>
             <div><span class="text-slate-400">收件人：</span><strong class="text-slate-700">{{ selectedLogDetail.recipientName }} ({{ selectedLogDetail.recipientEmail }})</strong></div>
             <div><span class="text-slate-400">主機名稱：</span><strong class="text-blue-600">{{ selectedLogDetail.vmId }}</strong></div>
-            <div><span class="text-slate-400">發信管道：</span><strong class="text-emerald-700">{{ selectedLogDetail.channel }}</strong></div>
-            <div><span class="text-slate-400">傳遞狀態：</span><strong :class="selectedLogDetail.status === 'SUCCESS' ? 'text-emerald-600' : 'text-rose-600'">{{ selectedLogDetail.status }}</strong></div>
+            <div><span class="text-slate-400">發信管道：</span><strong class="text-green-700">{{ selectedLogDetail.channel }}</strong></div>
+            <div><span class="text-slate-400">傳遞狀態：</span><strong :class="selectedLogDetail.status === 'SUCCESS' ? 'text-green-600' : 'text-red-600'">{{ selectedLogDetail.status }}</strong></div>
           </div>
 
           <div>
@@ -487,10 +464,10 @@
 
           <div>
             <label class="block font-bold text-slate-700 mb-1">郵件正文內容快照 (Body Snapshot)：</label>
-            <pre class="p-3 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] whitespace-pre-wrap leading-relaxed">{{ selectedLogDetail.bodyText }}</pre>
+            <pre class="p-3 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs whitespace-pre-wrap leading-relaxed">{{ selectedLogDetail.bodyText }}</pre>
           </div>
 
-          <div v-if="selectedLogDetail.errorMessage" class="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
+          <div v-if="selectedLogDetail.errorMessage" class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl">
             <strong>錯誤原因：</strong> {{ selectedLogDetail.errorMessage }}
           </div>
         </div>
@@ -505,378 +482,393 @@
   </div>
 
   <script>
-    const { createApp, ref, computed, onMounted } = Vue;
+    // Robust App Bootstrapping with Fallback
+    (function() {
+      function startApp() {
+        if (typeof Vue === 'undefined') {
+          console.error("Vue failed to load from primary CDN. Attempting fallback...");
+          var s = document.createElement('script');
+          s.src = "https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js";
+          s.onload = initVue;
+          document.head.appendChild(s);
+        } else {
+          initVue();
+        }
+      }
 
-    createApp({
-      setup() {
-        const currentTab = ref('booking');
-        const adminSubTab = ref('vms');
-        const defaultTimeSlots = [
-          '09:00 - 10:00',
-          '10:00 - 11:00',
-          '11:00 - 12:00',
-          '13:00 - 14:00',
-          '14:00 - 15:00',
-          '15:00 - 16:00',
-          '16:00 - 17:00',
-          '17:00 - 18:00'
-        ];
+      function initVue() {
+        const { createApp, ref, computed, onMounted } = Vue;
 
-        const today = new Date().toISOString().split('T')[0];
-        const minDate = ref(today);
-        const selectedDate = ref(today);
+        createApp({
+          setup() {
+            const currentTab = ref('booking');
+            const adminSubTab = ref('vms');
+            const defaultTimeSlots = [
+              '09:00 - 10:00',
+              '10:00 - 11:00',
+              '11:00 - 12:00',
+              '13:00 - 14:00',
+              '14:00 - 15:00',
+              '15:00 - 16:00',
+              '16:00 - 17:00',
+              '17:00 - 18:00'
+            ];
 
-        const userForm = ref({
-          empId: 'EMP1001',
-          name: '梁廷仰',
-          email: 'user@company.com'
-        });
+            const today = new Date().toISOString().split('T')[0];
+            const minDate = ref(today);
+            const selectedDate = ref(today);
 
-        // 3 台 VM 資料狀態
-        const savedVMs = localStorage.getItem('vm_list_data');
-        const vmList = ref(savedVMs ? JSON.parse(savedVMs) : [
-          { vmId: 'VM-01', ipAddress: '192.168.10.101', port: 3389, username: 'vm01_user', password: 'PassWord#01', newPassword: '', showPassword: false, isActive: true },
-          { vmId: 'VM-02', ipAddress: '192.168.10.102', port: 3389, username: 'vm02_user', password: 'PassWord#02', newPassword: '', showPassword: false, isActive: true },
-          { vmId: 'VM-03', ipAddress: '192.168.10.103', port: 3389, username: 'vm03_user', password: 'PassWord#03', newPassword: '', showPassword: false, isActive: true }
-        ]);
+            const userForm = ref({
+              empId: 'EMP1001',
+              name: '梁廷仰',
+              email: 'user@company.com'
+            });
 
-        // Google Apps Script Web App URL
-        const savedGasUrl = localStorage.getItem('gas_webhook_url');
-        const gasWebhookUrl = ref(savedGasUrl || 'https://script.google.com/macros/s/AKfycbxq5VjavxQszxCFu8Syi86jQnEN0L-PVjlZdOwZ_Ruhrb1I_D4Spk21aTiVNoOAk9Mp/exec');
+            const savedVMs = localStorage.getItem('vm_list_data');
+            const vmList = ref(savedVMs ? JSON.parse(savedVMs) : [
+              { vmId: 'VM-01', ipAddress: '192.168.10.101', port: 3389, username: 'vm01_user', password: 'PassWord#01', newPassword: '', showPassword: false, isActive: true },
+              { vmId: 'VM-02', ipAddress: '192.168.10.102', port: 3389, username: 'vm02_user', password: 'PassWord#02', newPassword: '', showPassword: false, isActive: true },
+              { vmId: 'VM-03', ipAddress: '192.168.10.103', port: 3389, username: 'vm03_user', password: 'PassWord#03', newPassword: '', showPassword: false, isActive: true }
+            ]);
 
-        // 預約清單
-        const savedBookings = localStorage.getItem('vm_all_bookings');
-        const allBookings = ref(savedBookings ? JSON.parse(savedBookings) : [
-          { date: today, vmId: 'VM-01', time: '09:00 - 10:00', empId: 'EMP9999', name: '陳專員', email: 'chen@company.com' }
-        ]);
+            const savedGasUrl = localStorage.getItem('gas_webhook_url');
+            const gasWebhookUrl = ref(savedGasUrl || 'https://script.google.com/macros/s/AKfycbxq5VjavxQszxCFu8Syi86jQnEN0L-PVjlZdOwZ_Ruhrb1I_D4Spk21aTiVNoOAk9Mp/exec');
 
-        // 郵件寄送紀錄 (LOG)
-        const savedLogs = localStorage.getItem('vm_email_logs');
-        const emailLogs = ref(savedLogs ? JSON.parse(savedLogs) : []);
+            const savedBookings = localStorage.getItem('vm_all_bookings');
+            const allBookings = ref(savedBookings ? JSON.parse(savedBookings) : [
+              { date: today, vmId: 'VM-01', time: '09:00 - 10:00', empId: 'EMP9999', name: '陳專員', email: 'chen@company.com' }
+            ]);
 
-        const selectedSlots = ref([]);
-        const isSubmitting = ref(false);
-        const latestBookingResult = ref(null);
-        const latestLogId = ref('');
-        const emailDeliveryStatus = ref('');
-        const logSearch = ref('');
-        const selectedLogDetail = ref(null);
+            const savedLogs = localStorage.getItem('vm_email_logs');
+            const emailLogs = ref(savedLogs ? JSON.parse(savedLogs) : []);
 
-        const notification = ref({ show: false, message: '', type: 'success' });
+            const selectedSlots = ref([]);
+            const isSubmitting = ref(false);
+            const latestBookingResult = ref(null);
+            const latestLogId = ref('');
+            const emailDeliveryStatus = ref('');
+            const logSearch = ref('');
+            const selectedLogDetail = ref(null);
 
-        const showNotice = (msg, type = 'success') => {
-          notification.value = { show: true, message: msg, type };
-          setTimeout(() => { notification.value.show = false; }, 4000);
-        };
+            const notification = ref({ show: false, message: '', type: 'success' });
 
-        const mailToLink = computed(() => {
-          if (!latestBookingResult.value) return '#';
-          const r = latestBookingResult.value;
-          const subject = encodeURIComponent(`【預約成功】${r.date} 線上 VM 使用通知與連線資訊`);
-          const body = encodeURIComponent(
-            `同仁您好，您的線上 VM 已預約成功！\n\n` +
-            `預約主機：${r.vmId}\n` +
-            `預約時段：${r.date} ${r.timeSlots.join(', ')}\n` +
-            `連線 IP / Port：${r.ip}:${r.port}\n` +
-            `登入帳號：${r.username}\n` +
-            `登入密碼：${r.password}\n\n` +
-            `注意事項：每日每人上限為 2 小時，使用完畢請正常登出工作階段。`
-          );
-          return `mailto:${r.email}?subject=${subject}&body=${body}`;
-        });
-
-        const todayUsedHours = computed(() => {
-          if (!userForm.value.empId) return 0;
-          const bookedCount = allBookings.value.filter(
-            b => b.date === selectedDate.value && b.empId.trim().toUpperCase() === userForm.value.empId.trim().toUpperCase()
-          ).length;
-          return bookedCount;
-        });
-
-        const isSlotBooked = (vmId, time) => {
-          return allBookings.value.some(b => b.date === selectedDate.value && b.vmId === vmId && b.time === time);
-        };
-
-        const isSlotSelected = (vmId, time) => {
-          return selectedSlots.value.some(s => s.vmId === vmId && s.time === time);
-        };
-
-        const getSlotClass = (vmId, time) => {
-          if (isSlotSelected(vmId, time)) {
-            return 'bg-blue-600 text-white border-blue-600 shadow-sm';
-          }
-          if (isSlotBooked(vmId, time)) {
-            return 'bg-slate-200/80 text-slate-400 border-slate-300 cursor-not-allowed';
-          }
-          return 'bg-emerald-50/70 text-emerald-800 border-emerald-200 hover:bg-emerald-100/80';
-        };
-
-        const toggleSlot = (vmId, time) => {
-          const targetVM = vmList.value.find(v => v.vmId === vmId);
-          if (!targetVM || !targetVM.isActive) {
-            showNotice(`${vmId} 目前處於維護中，無法預約`, 'error');
-            return;
-          }
-          if (isSlotBooked(vmId, time)) {
-            showNotice('此時段已被其他同仁預約', 'error');
-            return;
-          }
-
-          const existingIndex = selectedSlots.value.findIndex(s => s.vmId === vmId && s.time === time);
-          if (existingIndex > -1) {
-            selectedSlots.value.splice(existingIndex, 1);
-          } else {
-            const isSameTimeOnOtherVM = selectedSlots.value.some(s => s.time === time);
-            if (isSameTimeOnOtherVM) {
-              showNotice('您不能在相同時段重複預約多台電腦', 'error');
-              return;
-            }
-
-            const currentTotal = todayUsedHours.value + selectedSlots.value.length;
-            if (currentTotal >= 2) {
-              showNotice(`每位同仁每日申請上限為 2 小時（目前已預約 ${todayUsedHours.value} 小時）`, 'error');
-              return;
-            }
-
-            selectedSlots.value.push({ vmId, time });
-          }
-        };
-
-        const removeSlot = (index) => {
-          selectedSlots.value.splice(index, 1);
-        };
-
-        // 透過 Google Apps Script 發送 Gmail 並寫入 LOG
-        const sendEmailViaGAS = async (bookingData) => {
-          const now = new Date();
-          const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-          const logId = 'LOG-' + now.getTime().toString().slice(-8);
-          latestLogId.value = logId;
-
-          const subject = `【預約成功】${bookingData.date} 線上 VM 使用通知與連線資訊`;
-          const bodyText = `同仁您好，您的線上 VM 已預約成功！\n\n` +
-            `預約主機：${bookingData.vmId}\n` +
-            `預約時段：${bookingData.date} ${bookingData.timeSlots.join(', ')}\n` +
-            `主機連線位址：${bookingData.ip}:${bookingData.port}\n` +
-            `登入帳號：${bookingData.username}\n` +
-            `登入密碼：${bookingData.password}\n\n` +
-            `注意事項：每日每人上限為 2 小時，使用完畢請正常登出工作階段。`;
-
-          let status = 'SUCCESS';
-          let errorMessage = '';
-
-          try {
-            const payload = {
-              to_name: bookingData.name,
-              to_email: bookingData.email,
-              vm_id: bookingData.vmId,
-              booking_date: bookingData.date,
-              booking_time: bookingData.timeSlots.join(', '),
-              vm_ip: `${bookingData.ip}:${bookingData.port}`,
-              vm_user: bookingData.username,
-              vm_pass: bookingData.password,
-              subject: subject,
-              body: bodyText
+            const showNotice = (msg, type = 'success') => {
+              notification.value = { show: true, message: msg, type };
+              setTimeout(() => { notification.value.show = false; }, 4000);
             };
 
-            // 使用 no-cors 模式呼叫 Google Apps Script Web App
-            await fetch(gasWebhookUrl.value, {
-              method: 'POST',
-              mode: 'no-cors',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(payload)
+            const mailToLink = computed(() => {
+              if (!latestBookingResult.value) return '#';
+              const r = latestBookingResult.value;
+              const subject = encodeURIComponent(`【預約成功】${r.date} 線上 VM 使用通知與連線資訊`);
+              const body = encodeURIComponent(
+                `同仁您好，您的線上 VM 已預約成功！\n\n` +
+                `預約主機：${r.vmId}\n` +
+                `預約時段：${r.date} ${r.timeSlots.join(', ')}\n` +
+                `連線 IP / Port：${r.ip}:${r.port}\n` +
+                `登入帳號：${r.username}\n` +
+                `登入密碼：${r.password}\n\n` +
+                `注意事項：每日每人上限為 2 小時，使用完畢請正常登出工作階段。`
+              );
+              return `mailto:${r.email}?subject=${subject}&body=${body}`;
             });
 
-            emailDeliveryStatus.value = 'Gmail 已成功發送至同仁信箱！';
-          } catch (err) {
-            status = 'FAILED';
-            errorMessage = err.message || '連線至 GAS 失敗';
-            emailDeliveryStatus.value = 'Gmail 發送失敗，請利用備援按鈕發信';
-          }
-
-          // 寫入審計 LOG 紀錄
-          const newLog = {
-            logId,
-            timestamp,
-            recipientName: bookingData.name,
-            recipientEmail: bookingData.email,
-            vmId: bookingData.vmId,
-            bookingDate: bookingData.date,
-            timeSlots: bookingData.timeSlots.join(', '),
-            channel: 'Google Apps Script (Gmail)',
-            status,
-            subject,
-            bodyText,
-            errorMessage
-          };
-
-          emailLogs.value.unshift(newLog);
-          localStorage.setItem('vm_email_logs', JSON.stringify(emailLogs.value));
-        };
-
-        const submitBooking = async () => {
-          if (!userForm.value.empId || !userForm.value.name || !userForm.value.email) {
-            showNotice('請完整填寫員編、姓名及 Email', 'error');
-            return;
-          }
-
-          isSubmitting.value = true;
-
-          selectedSlots.value.forEach(slot => {
-            allBookings.value.push({
-              date: selectedDate.value,
-              vmId: slot.vmId,
-              time: slot.time,
-              empId: userForm.value.empId,
-              name: userForm.value.name,
-              email: userForm.value.email
+            const todayUsedHours = computed(() => {
+              if (!userForm.value.empId) return 0;
+              const bookedCount = allBookings.value.filter(
+                b => b.date === selectedDate.value && b.empId.trim().toUpperCase() === userForm.value.empId.trim().toUpperCase()
+              ).length;
+              return bookedCount;
             });
-          });
-          localStorage.setItem('vm_all_bookings', JSON.stringify(allBookings.value));
 
-          const targetVM = vmList.value.find(v => v.vmId === selectedSlots.value[0].vmId);
-          const bookingInfo = {
-            name: userForm.value.name,
-            email: userForm.value.email,
-            vmId: targetVM.vmId,
-            date: selectedDate.value,
-            timeSlots: selectedSlots.value.map(s => s.time),
-            ip: targetVM.ipAddress,
-            port: targetVM.port,
-            username: targetVM.username,
-            password: targetVM.password
-          };
-          latestBookingResult.value = bookingInfo;
+            const isSlotBooked = (vmId, time) => {
+              return allBookings.value.some(b => b.date === selectedDate.value && b.vmId === vmId && b.time === time);
+            };
 
-          await sendEmailViaGAS(bookingInfo);
+            const isSlotSelected = (vmId, time) => {
+              return selectedSlots.value.some(s => s.vmId === vmId && s.time === time);
+            };
 
-          showNotice(`預約完成！Gmail 已寄出連線帳密並記錄於 LOG`, 'success');
-          selectedSlots.value = [];
-          isSubmitting.value = false;
-        };
+            const getSlotClass = (vmId, time) => {
+              if (isSlotSelected(vmId, time)) {
+                return 'slot-selected';
+              }
+              if (isSlotBooked(vmId, time)) {
+                return 'slot-booked';
+              }
+              return 'slot-available';
+            };
 
-        // 管理員後台相關邏輯 (密碼設定為 1qaz2wsx3edc4rfv，無提示)
-        const adminAuth = ref({
-          isLoggedIn: false,
-          username: ''
-        });
+            const toggleSlot = (vmId, time) => {
+              const targetVM = vmList.value.find(v => v.vmId === vmId);
+              if (!targetVM || !targetVM.isActive) {
+                showNotice(`${vmId} 目前處於維護中，無法預約`, 'error');
+                return;
+              }
+              if (isSlotBooked(vmId, time)) {
+                showNotice('此時段已被其他同仁預約', 'error');
+                return;
+              }
 
-        const adminLoginForm = ref({ username: 'admin', password: '' });
+              const existingIndex = selectedSlots.value.findIndex(s => s.vmId === vmId && s.time === time);
+              if (existingIndex > -1) {
+                selectedSlots.value.splice(existingIndex, 1);
+              } else {
+                const isSameTimeOnOtherVM = selectedSlots.value.some(s => s.time === time);
+                if (isSameTimeOnOtherVM) {
+                  showNotice('您不能在相同時段重複預約多台電腦', 'error');
+                  return;
+                }
 
-        const adminLogin = () => {
-          if (adminLoginForm.value.username === 'admin' && adminLoginForm.value.password === '1qaz2wsx3edc4rfv') {
-            adminAuth.value = { isLoggedIn: true, username: 'admin' };
-            showNotice('後台身份授權驗證成功！', 'success');
-          } else {
-            showNotice('管理員帳號或密碼錯誤', 'error');
+                const currentTotal = todayUsedHours.value + selectedSlots.value.length;
+                if (currentTotal >= 2) {
+                  showNotice(`每位同仁每日申請上限為 2 小時（目前已預約 ${todayUsedHours.value} 小時）`, 'error');
+                  return;
+                }
+
+                selectedSlots.value.push({ vmId, time });
+              }
+            };
+
+            const removeSlot = (index) => {
+              selectedSlots.value.splice(index, 1);
+            };
+
+            const sendEmailViaGAS = async (bookingData) => {
+              const now = new Date();
+              const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+              const logId = 'LOG-' + now.getTime().toString().slice(-8);
+              latestLogId.value = logId;
+
+              const subject = `【預約成功】${bookingData.date} 線上 VM 使用通知與連線資訊`;
+              const bodyText = `同仁您好，您的線上 VM 已預約成功！\n\n` +
+                `預約主機：${bookingData.vmId}\n` +
+                `預約時段：${bookingData.date} ${bookingData.timeSlots.join(', ')}\n` +
+                `主機連線位址：${bookingData.ip}:${bookingData.port}\n` +
+                `登入帳號：${bookingData.username}\n` +
+                `登入密碼：${bookingData.password}\n\n` +
+                `注意事項：每日每人上限為 2 小時，使用完畢請正常登出工作階段。`;
+
+              let status = 'SUCCESS';
+              let errorMessage = '';
+
+              try {
+                const payload = {
+                  to_name: bookingData.name,
+                  to_email: bookingData.email,
+                  vm_id: bookingData.vmId,
+                  booking_date: bookingData.date,
+                  booking_time: bookingData.timeSlots.join(', '),
+                  vm_ip: `${bookingData.ip}:${bookingData.port}`,
+                  vm_user: bookingData.username,
+                  vm_pass: bookingData.password,
+                  subject: subject,
+                  body: bodyText
+                };
+
+                await fetch(gasWebhookUrl.value, {
+                  method: 'POST',
+                  mode: 'no-cors',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(payload)
+                });
+
+                emailDeliveryStatus.value = 'Gmail 已成功發送至同仁信箱！';
+              } catch (err) {
+                status = 'FAILED';
+                errorMessage = err.message || '連線至 GAS 失敗';
+                emailDeliveryStatus.value = 'Gmail 發送失敗，請利用備援按鈕發信';
+              }
+
+              const newLog = {
+                logId,
+                timestamp,
+                recipientName: bookingData.name,
+                recipientEmail: bookingData.email,
+                vmId: bookingData.vmId,
+                bookingDate: bookingData.date,
+                timeSlots: bookingData.timeSlots.join(', '),
+                channel: 'Google Apps Script (Gmail)',
+                status,
+                subject,
+                bodyText,
+                errorMessage
+              };
+
+              emailLogs.value.unshift(newLog);
+              localStorage.setItem('vm_email_logs', JSON.stringify(emailLogs.value));
+            };
+
+            const submitBooking = async () => {
+              if (!userForm.value.empId || !userForm.value.name || !userForm.value.email) {
+                showNotice('請完整填寫員編、姓名及 Email', 'error');
+                return;
+              }
+
+              isSubmitting.value = true;
+
+              selectedSlots.value.forEach(slot => {
+                allBookings.value.push({
+                  date: selectedDate.value,
+                  vmId: slot.vmId,
+                  time: slot.time,
+                  empId: userForm.value.empId,
+                  name: userForm.value.name,
+                  email: userForm.value.email
+                });
+              });
+              localStorage.setItem('vm_all_bookings', JSON.stringify(allBookings.value));
+
+              const targetVM = vmList.value.find(v => v.vmId === selectedSlots.value[0].vmId);
+              const bookingInfo = {
+                name: userForm.value.name,
+                email: userForm.value.email,
+                vmId: targetVM.vmId,
+                date: selectedDate.value,
+                timeSlots: selectedSlots.value.map(s => s.time),
+                ip: targetVM.ipAddress,
+                port: targetVM.port,
+                username: targetVM.username,
+                password: targetVM.password
+              };
+              latestBookingResult.value = bookingInfo;
+
+              await sendEmailViaGAS(bookingInfo);
+
+              showNotice(`預約完成！Gmail 已寄出連線帳密並記錄於 LOG`, 'success');
+              selectedSlots.value = [];
+              isSubmitting.value = false;
+            };
+
+            // 管理員後台 (密碼: 1qaz2wsx3edc4rfv)
+            const adminAuth = ref({
+              isLoggedIn: false,
+              username: ''
+            });
+
+            const adminLoginForm = ref({ username: 'admin', password: '' });
+
+            const adminLogin = () => {
+              if (adminLoginForm.value.username === 'admin' && adminLoginForm.value.password === '1qaz2wsx3edc4rfv') {
+                adminAuth.value = { isLoggedIn: true, username: 'admin' };
+                showNotice('後台身份授權驗證成功！', 'success');
+              } else {
+                showNotice('管理員帳號或密碼錯誤', 'error');
+              }
+            };
+
+            const adminLogout = () => {
+              adminAuth.value = { isLoggedIn: false, username: '' };
+              adminLoginForm.value.password = '';
+              showNotice('已安全登出後台', 'success');
+            };
+
+            const saveVmConfig = (vm) => {
+              if (vm.newPassword && vm.newPassword.trim() !== '') {
+                vm.password = vm.newPassword;
+                vm.newPassword = '';
+              }
+              localStorage.setItem('vm_list_data', JSON.stringify(vmList.value));
+              showNotice(`主機 [${vm.vmId}] 設定與連線密碼已成功更新並儲存！`, 'success');
+            };
+
+            const saveGasUrl = () => {
+              localStorage.setItem('gas_webhook_url', gasWebhookUrl.value);
+              showNotice('Google Apps Script 網址已成功儲存！', 'success');
+            };
+
+            const filteredLogs = computed(() => {
+              if (!logSearch.value) return emailLogs.value;
+              const q = logSearch.value.toLowerCase();
+              return emailLogs.value.filter(l => 
+                l.logId.toLowerCase().includes(q) ||
+                l.recipientName.toLowerCase().includes(q) ||
+                l.recipientEmail.toLowerCase().includes(q) ||
+                l.vmId.toLowerCase().includes(q) ||
+                l.status.toLowerCase().includes(q)
+              );
+            });
+
+            const viewLogDetail = (log) => {
+              selectedLogDetail.value = log;
+            };
+
+            const clearLogs = () => {
+              if (confirm('確定要清除所有郵件寄送紀錄 (LOG) 嗎？')) {
+                emailLogs.value = [];
+                localStorage.removeItem('vm_email_logs');
+                showNotice('郵件紀錄已清空', 'success');
+              }
+            };
+
+            const exportLogsCSV = () => {
+              if (emailLogs.value.length === 0) {
+                showNotice('目前無任何紀錄可匯出', 'error');
+                return;
+              }
+              let csv = "\uFEFFLog ID,發送時間,收件人姓名,收件人Email,主機,預約日期,時段,發信管道,狀態\n";
+              emailLogs.value.forEach(l => {
+                csv += `"${l.logId}","${l.timestamp}","${l.recipientName}","${l.recipientEmail}","${l.vmId}","${l.bookingDate}","${l.timeSlots}","${l.channel}","${l.status}"\n`;
+              });
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement("a");
+              link.href = URL.createObjectURL(blob);
+              link.setAttribute("download", `VM_Email_Logs_${today}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            };
+
+            return {
+              currentTab,
+              adminSubTab,
+              defaultTimeSlots,
+              minDate,
+              selectedDate,
+              userForm,
+              vmList,
+              allBookings,
+              selectedSlots,
+              isSubmitting,
+              todayUsedHours,
+              latestBookingResult,
+              latestLogId,
+              emailDeliveryStatus,
+              gasWebhookUrl,
+              mailToLink,
+              emailLogs,
+              logSearch,
+              filteredLogs,
+              selectedLogDetail,
+              notification,
+              adminAuth,
+              adminLoginForm,
+              isSlotBooked,
+              isSlotSelected,
+              getSlotClass,
+              toggleSlot,
+              removeSlot,
+              submitBooking,
+              adminLogin,
+              adminLogout,
+              saveVmConfig,
+              saveGasUrl,
+              viewLogDetail,
+              clearLogs,
+              exportLogsCSV
+            };
           }
-        };
-
-        const adminLogout = () => {
-          adminAuth.value = { isLoggedIn: false, username: '' };
-          adminLoginForm.value.password = '';
-          showNotice('已安全登出後台', 'success');
-        };
-
-        const saveVmConfig = (vm) => {
-          if (vm.newPassword && vm.newPassword.trim() !== '') {
-            vm.password = vm.newPassword;
-            vm.newPassword = '';
-          }
-          localStorage.setItem('vm_list_data', JSON.stringify(vmList.value));
-          showNotice(`主機 [${vm.vmId}] 設定與連線密碼已成功更新並儲存！`, 'success');
-        };
-
-        const saveGasUrl = () => {
-          localStorage.setItem('gas_webhook_url', gasWebhookUrl.value);
-          showNotice('Google Apps Script 網址已成功儲存！', 'success');
-        };
-
-        // LOG 搜尋與過濾
-        const filteredLogs = computed(() => {
-          if (!logSearch.value) return emailLogs.value;
-          const q = logSearch.value.toLowerCase();
-          return emailLogs.value.filter(l => 
-            l.logId.toLowerCase().includes(q) ||
-            l.recipientName.toLowerCase().includes(q) ||
-            l.recipientEmail.toLowerCase().includes(q) ||
-            l.vmId.toLowerCase().includes(q) ||
-            l.status.toLowerCase().includes(q)
-          );
-        });
-
-        const viewLogDetail = (log) => {
-          selectedLogDetail.value = log;
-        };
-
-        const clearLogs = () => {
-          if (confirm('確定要清除所有郵件寄送紀錄 (LOG) 嗎？')) {
-            emailLogs.value = [];
-            localStorage.removeItem('vm_email_logs');
-            showNotice('郵件紀錄已清空', 'success');
-          }
-        };
-
-        const exportLogsCSV = () => {
-          if (emailLogs.value.length === 0) {
-            showNotice('目前無任何紀錄可匯出', 'error');
-            return;
-          }
-          let csv = "\uFEFFLog ID,發送時間,收件人姓名,收件人Email,主機,預約日期,時段,發信管道,狀態\n";
-          emailLogs.value.forEach(l => {
-            csv += `"${l.logId}","${l.timestamp}","${l.recipientName}","${l.recipientEmail}","${l.vmId}","${l.bookingDate}","${l.timeSlots}","${l.channel}","${l.status}"\n`;
-          });
-          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.setAttribute("download", `VM_Email_Logs_${today}.csv`);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        };
-
-        return {
-          currentTab,
-          adminSubTab,
-          defaultTimeSlots,
-          minDate,
-          selectedDate,
-          userForm,
-          vmList,
-          allBookings,
-          selectedSlots,
-          isSubmitting,
-          todayUsedHours,
-          latestBookingResult,
-          latestLogId,
-          emailDeliveryStatus,
-          gasWebhookUrl,
-          mailToLink,
-          emailLogs,
-          logSearch,
-          filteredLogs,
-          selectedLogDetail,
-          notification,
-          adminAuth,
-          adminLoginForm,
-          isSlotBooked,
-          isSlotSelected,
-          getSlotClass,
-          toggleSlot,
-          removeSlot,
-          submitBooking,
-          adminLogin,
-          adminLogout,
-          saveVmConfig,
-          saveGasUrl,
-          viewLogDetail,
-          clearLogs,
-          exportLogsCSV
-        };
+        }).mount('#app');
       }
-    }).mount('#app');
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startApp);
+      } else {
+        startApp();
+      }
+    })();
   </script>
 </body>
 </html>
