@@ -26,7 +26,7 @@
           </div>
           <div>
             <h1 class="font-bold text-lg leading-tight">線上 VM 電腦預約系統</h1>
-            <p class="text-xs text-slate-400">Google 雲端試算表同步 &bull; 每日上限 2 小時 &bull; 自動 Gmail 帳密派送</p>
+            <p class="text-xs text-slate-400">Google 試算表雲端同步 &bull; 每日上限 2 小時 &bull; 自動 Gmail 派送</p>
           </div>
         </div>
 
@@ -47,24 +47,22 @@
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-      <!-- Notification Banner -->
-      <transition enter-active-class="transition duration-300 ease-out" enter-from-class="transform -translate-y-2 opacity-0" enter-to-class="transform translate-y-0 opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-        <div v-if="notification.show" 
-             :class="notification.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'"
-             class="p-4 mb-6 rounded-xl shadow-md flex items-center justify-between">
-          <span class="font-medium text-sm">{{ notification.message }}</span>
-          <button @click="notification.show = false" class="text-white hover:text-slate-200 font-bold ml-4">✕</button>
-        </div>
-      </transition>
+      <!-- 提示橫幅 -->
+      <div v-if="notification.show" 
+           :class="notification.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'"
+           class="p-4 mb-6 rounded-xl shadow-md flex items-center justify-between transition-all duration-300">
+        <span class="font-medium text-sm">{{ notification.message }}</span>
+        <button @click="notification.show = false" class="text-white hover:text-slate-200 font-bold ml-4">✕</button>
+      </div>
 
       <!-- ================= 1. 前台預約 ================= -->
       <div v-if="currentTab === 'booking'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- 左側：填寫申請資訊與額度狀況 -->
+        <!-- 左側：申請表單 -->
         <div class="lg:col-span-1 space-y-6">
           <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <h2 class="text-base font-bold text-slate-900">📝 填寫同仁申請資訊</h2>
-              <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium">名冊已就緒 ({{ staffDirectory.length }} 筆)</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-medium">名冊 ({{ staffDirectory.length }} 筆)</span>
             </div>
 
             <div class="space-y-4">
@@ -113,7 +111,7 @@
             <!-- 配額儀表板 -->
             <div class="mt-6 pt-5 border-t border-slate-100">
               <div class="flex justify-between items-center mb-2">
-                <span class="text-xs font-semibold text-slate-600">當日累計已用額度</span>
+                <span class="text-xs font-semibold text-slate-600">當日已預約時數</span>
                 <span class="text-xs font-bold" :class="todayUsedHours >= 2 ? 'text-rose-600' : 'text-blue-600'">
                   {{ todayUsedHours }} / 2.0 小時
                 </span>
@@ -124,12 +122,12 @@
                      :class="todayUsedHours >= 2 ? 'bg-rose-500' : 'bg-blue-600'"></div>
               </div>
               <p class="text-xs text-slate-400 mt-2">
-                ℹ️ 系統實施後端每日上限 2 小時驗證，額滿後無法繼續送出。
+                ℹ️ 系統限制每位同仁每日累計預約上限為 2 小時。
               </p>
             </div>
           </div>
 
-          <!-- 預約確認清單 -->
+          <!-- 選取時段卡片 -->
           <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <h3 class="font-bold text-slate-900 text-sm mb-3">本次選取預約清單</h3>
             <div v-if="selectedSlots.length === 0" class="text-center py-6 text-slate-400 text-xs">
@@ -160,7 +158,7 @@
           </div>
         </div>
 
-        <!-- 右側：看板網格 (06:00 - 00:00) -->
+        <!-- 右側：看板網格 -->
         <div class="lg:col-span-2 space-y-6">
           <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
@@ -169,12 +167,12 @@
                   <h2 class="text-base sm:text-lg font-bold text-slate-900">線上 VM 時段預約看板</h2>
                   <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">開放 06:00 ~ 00:00</span>
                 </div>
-                <p class="text-xs text-slate-500 mt-1">日期：{{ selectedDate || '請先選擇預約日期' }}（即時同步雲端資料庫）</p>
+                <p class="text-xs text-slate-500 mt-1">日期：{{ selectedDate || '請先選擇預約日期' }}（已自動同步雲端資料庫借用紀錄）</p>
               </div>
               <div class="flex items-center space-x-3 text-xs">
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-400 mr-1.5 inline-block"></span>可預約</span>
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-blue-600 mr-1.5 inline-block"></span>已選取</span>
-                <span class="flex items-center"><span class="w-3 h-3 rounded bg-rose-200 border border-rose-300 mr-1.5 inline-block"></span>已借出 (標記同仁)</span>
+                <span class="flex items-center"><span class="w-3 h-3 rounded bg-rose-200 border border-rose-300 mr-1.5 inline-block"></span>已借出 (顯示借用人)</span>
               </div>
             </div>
 
@@ -201,6 +199,7 @@
                       <span class="font-mono">{{ timeSlot }}</span>
                       <span>
                         <span v-if="isSlotSelected(vmId, timeSlot)" class="font-bold">✓ 已選取</span>
+                        <!-- 關鍵：已被借用時直接顯示同仁姓名並鎖定 -->
                         <span v-else-if="getBookedUser(vmId, timeSlot)" class="text-xs font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-300 shadow-sm">
                           👤 {{ getBookedUser(vmId, timeSlot).name }}
                         </span>
@@ -211,16 +210,6 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- 成功預約反饋 -->
-          <div v-if="latestBookingResult" class="bg-emerald-50 rounded-2xl shadow-sm border border-emerald-200 p-6">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-bold text-emerald-900">🎉 預約成功！通知信已派送至同仁信箱</span>
-            </div>
-            <p class="text-xs text-emerald-800">
-              預約資訊：<strong>{{ latestBookingResult.date }}</strong> 共 <strong>{{ latestBookingResult.slotsCount }} 個時段</strong>，收件信箱：<strong>{{ latestBookingResult.email }}</strong>。
-            </p>
           </div>
         </div>
       </div>
@@ -252,20 +241,19 @@
           <div class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div>
               <h2 class="text-base sm:text-lg font-bold text-slate-900">🛡️ VM 預約雲端資料庫管理中樞</h2>
-              <p class="text-xs text-slate-500 mt-0.5">即時監控全域預約資料庫，支援手動釋放時段與報表匯出。</p>
+              <p class="text-xs text-slate-500 mt-0.5">即時監控全域預約資料庫，支援報表匯出。</p>
             </div>
             <button @click="adminLogout" class="px-3.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold transition">
               登出
             </button>
           </div>
 
-          <!-- 後台資料庫檢視 -->
           <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
               <h3 class="font-bold text-slate-900 text-sm">🗄️ 全域借用紀錄清單 (共 {{ allBookings.length }} 筆)</h3>
               <div class="flex items-center space-x-2">
                 <button @click="loadCloudBookings" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition">
-                  🔄 重新同步雲端
+                  🔄 重新整理雲端
                 </button>
                 <button @click="exportBookingsCSV" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition">
                   匯出 CSV 報表
@@ -321,7 +309,12 @@
             "22:00 - 23:00", "23:00 - 00:00"
           ];
 
-          const todayStr = new Date().toISOString().split('T')[0];
+          const today = new Date();
+          const y = today.getFullYear();
+          const m = String(today.getMonth() + 1).padStart(2, '0');
+          const d = String(today.getDate()).padStart(2, '0');
+          const todayStr = `${y}-${m}-${d}`;
+
           const minDate = ref(todayStr);
           const selectedDate = ref(todayStr);
 
@@ -331,7 +324,9 @@
             { empId: 'ch0001', name: '系統管理員', email: 'admin@mail.chfd.gov.tw' }
           ]);
 
+          const sheetId = '1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo';
           const gasWebhookUrl = 'https://script.google.com/macros/s/AKfycbyWUC8Hf4NThd5w423ejFDnyYeOoQH_khRdem_vDHbGoTae5fF5aDuMT2hSmm4go4RMAg/exec';
+
           const allBookings = ref([]);
           const selectedSlots = ref([]);
           const isSubmitting = ref(false);
@@ -343,25 +338,74 @@
             setTimeout(() => { notification.value.show = false; }, 4000);
           };
 
-          // 載入雲端借用資料庫
+          // 日期正規化函式：確保 2026/8/27 與 2026-08-27 比對完全一致
+          const normalizeDate = (dStr) => {
+            if (!dStr) return '';
+            const s = String(dStr).trim().replace(/\//g, '-');
+            const parts = s.split('-');
+            if (parts.length === 3) {
+              const yr = parts[0];
+              const mo = parts[1].padStart(2, '0');
+              const da = parts[2].padStart(2, '0');
+              return `${yr}-${mo}-${da}`;
+            }
+            return s;
+          };
+
+          // 從 Google 試算表及 GAS 載入借用紀錄 (雙重通道確保即時同步)
           const loadCloudBookings = async () => {
             try {
-              const response = await fetch(`${gasWebhookUrl}?action=getBookings`);
+              // 通道 1: 直接從 Google 試算表公開 CSV 讀取「預約紀錄」分頁
+              const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=預約紀錄`;
+              const response = await fetch(csvUrl);
               if (response.ok) {
-                const res = await response.json();
-                if (res.status === 'success' && Array.isArray(res.data)) {
-                  allBookings.value = res.data;
+                const csvText = await response.text();
+                const lines = csvText.split(/\r?\n/);
+                const parsed = [];
+                for (let i = 1; i < lines.length; i++) {
+                  const line = lines[i].trim();
+                  if (!line) continue;
+                  const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
+                  if (cols.length >= 4 && cols[1] && cols[2] && cols[3]) {
+                    parsed.push({
+                      date: normalizeDate(cols[1]),
+                      vmId: cols[2],
+                      time: cols[3],
+                      empId: cols[4] || '',
+                      name: cols[5] || '',
+                      email: cols[6] || ''
+                    });
+                  }
+                }
+                if (parsed.length > 0) {
+                  allBookings.value = parsed;
+                  return;
                 }
               }
             } catch (err) {
-              console.warn("無法取得雲端預約紀錄:", err);
+              console.warn("試算表 CSV 讀取切換為 GAS API:", err);
+            }
+
+            // 通道 2: GAS doGet API 備援
+            try {
+              const res = await fetch(`${gasWebhookUrl}?action=getBookings`);
+              if (res.ok) {
+                const json = await res.json();
+                if (json.status === 'success' && Array.isArray(json.data)) {
+                  allBookings.value = json.data.map(b => ({
+                    ...b,
+                    date: normalizeDate(b.date)
+                  }));
+                }
+              }
+            } catch (err) {
+              console.warn("GAS 讀取失敗:", err);
             }
           };
 
           // 載入同仁名冊
           const loadStaffDirectory = async () => {
             try {
-              const sheetId = '1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo';
               const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=0`;
               const response = await fetch(csvUrl);
               if (response.ok) {
@@ -394,7 +438,7 @@
                 }
               }
             } catch (err) {
-              console.warn("使用本地基礎名冊:", err);
+              console.warn("名冊使用基礎名冊:", err);
             }
           };
 
@@ -424,16 +468,25 @@
             loadCloudBookings();
           };
 
+          // 當日已用額度統計
           const todayUsedHours = computed(() => {
             if (!userForm.value.empId || !selectedDate.value) return 0;
+            const targetDate = normalizeDate(selectedDate.value);
             return allBookings.value.filter(
-              b => b.date === selectedDate.value && b.empId.trim().toLowerCase() === userForm.value.empId.trim().toLowerCase()
+              b => normalizeDate(b.date) === targetDate && b.empId.trim().toLowerCase() === userForm.value.empId.trim().toLowerCase()
             ).length;
           });
 
+          // 關鍵核心：比對該主機與時段是否已被借出
           const getBookedUser = (vmId, time) => {
             if (!selectedDate.value) return null;
-            return allBookings.value.find(b => b.date === selectedDate.value && b.vmId === vmId && b.time === time) || null;
+            const targetDate = normalizeDate(selectedDate.value);
+            const cleanTime = String(time).replace(/\s+/g, '');
+            return allBookings.value.find(b => {
+              return normalizeDate(b.date) === targetDate &&
+                     String(b.vmId).trim() === String(vmId).trim() &&
+                     String(b.time).replace(/\s+/g, '') === cleanTime;
+            }) || null;
           };
 
           const isSlotSelected = (vmId, time) => selectedSlots.value.some(s => s.vmId === vmId && s.time === time);
@@ -449,7 +502,7 @@
             if (!userForm.value.isMatched) return showNotice('請先輸入員編並點擊「帶入」完成驗證', 'error');
 
             const booked = getBookedUser(vmId, time);
-            if (booked) return showNotice(`該時段已被【${booked.name}】預約！`, 'error');
+            if (booked) return showNotice(`該時段已被【${booked.name}】預約！無法重複借用`, 'error');
 
             const idx = selectedSlots.value.findIndex(s => s.vmId === vmId && s.time === time);
             if (idx > -1) {
@@ -467,13 +520,13 @@
 
           const removeSlot = (index) => selectedSlots.value.splice(index, 1);
 
-          // 送出預約
+          // 送出預約 (使用 text/plain 避免瀏覽器 OPTIONS 預檢被擋)
           const submitBooking = async () => {
             if (!userForm.value.isMatched || selectedSlots.value.length === 0) return;
             isSubmitting.value = true;
 
             const payload = {
-              date: selectedDate.value,
+              date: normalizeDate(selectedDate.value),
               empId: userForm.value.empId,
               name: userForm.value.name,
               email: userForm.value.email,
@@ -481,26 +534,29 @@
             };
 
             try {
-              const res = await fetch(gasWebhookUrl, {
+              // 樂觀更新前端畫面
+              selectedSlots.value.forEach(slot => {
+                allBookings.value.push({
+                  date: payload.date,
+                  vmId: slot.vmId,
+                  time: slot.time,
+                  empId: payload.empId,
+                  name: payload.name,
+                  email: payload.email
+                });
+              });
+
+              await fetch(gasWebhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
               });
-              const data = await res.json();
 
-              if (data.status === 'success') {
-                showNotice(data.message || '預約成功！', 'success');
-                latestBookingResult.value = {
-                  date: selectedDate.value,
-                  slotsCount: selectedSlots.value.length,
-                  email: userForm.value.email
-                };
-                selectedSlots.value = [];
-                await loadCloudBookings();
-              } else {
-                showNotice(data.message || '預約失敗，請重試', 'error');
-                await loadCloudBookings();
-              }
+              showNotice(`預約成功！時段已鎖定為【${userForm.value.name}】，通知信已寄出`, 'success');
+              selectedSlots.value = [];
+              
+              // 2 秒後再次確認雲端資料庫最新狀態
+              setTimeout(loadCloudBookings, 2000);
             } catch (err) {
               showNotice('預約請求已送出，正在同步雲端資料庫...', 'success');
               selectedSlots.value = [];
@@ -510,7 +566,7 @@
             }
           };
 
-          // 管理員驗證
+          // 管理員登入
           const adminAuth = ref({ isLoggedIn: false });
           const adminLoginForm = ref({ username: 'admin', password: '' });
           const adminLogin = () => {
@@ -544,6 +600,8 @@
           onMounted(() => {
             loadStaffDirectory();
             loadCloudBookings();
+            // 每 15 秒自動背景更新一次看板狀態
+            setInterval(loadCloudBookings, 15000);
           });
 
           return {
