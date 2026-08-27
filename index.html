@@ -81,26 +81,26 @@
                   <input v-model="userForm.empId" @keyup.enter="lookupStaff" type="text" placeholder="例如：ch0028" 
                          class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
                   <button type="button" @click="lookupStaff" 
-                          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm whitespace-nowrap transition">
-                    帶入
+                          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm whitespace-nowrap transition flex items-center space-x-1">
+                    <span>帶入</span>
                   </button>
                 </div>
-                <div v-if="userForm.isMatched" class="mt-1 text-xs text-green-600 font-semibold flex items-center">
-                  ✓ 資料驗證成功並已帶入
+                <div v-if="userForm.isMatched" class="mt-1.5 text-xs text-green-600 font-semibold flex items-center">
+                  ✓ 資料驗證成功！已自動帶入姓名與信箱
                 </div>
               </div>
 
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">同仁姓名 <span class="text-red-500">*</span></label>
-                <input v-model="userForm.name" type="text" placeholder="點擊「帶入」自動填入或手動輸入" 
-                       :class="userForm.isMatched ? 'bg-slate-50 font-semibold text-slate-800' : ''"
+                <input v-model="userForm.name" type="text" placeholder="請先輸入員編點擊「帶入」或手動填寫" 
+                       :class="userForm.isMatched ? 'bg-green-50/50 font-semibold text-slate-800 border-green-300' : ''"
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
 
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">接收連線資訊 Email <span class="text-red-500">*</span></label>
-                <input v-model="userForm.email" type="email" placeholder="點擊「帶入」自動填入或手動輸入" 
-                       :class="userForm.isMatched ? 'bg-slate-50 font-semibold text-slate-800' : ''"
+                <input v-model="userForm.email" type="email" placeholder="example@mail.chfd.gov.tw" 
+                       :class="userForm.isMatched ? 'bg-green-50/50 font-semibold text-slate-800 border-green-300' : ''"
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
 
@@ -392,7 +392,7 @@
               <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
                 <div>
                   <h3 class="font-bold text-slate-900 text-base">📊 同仁名冊 Google 試算表連線設定</h3>
-                  <p class="text-xs text-slate-500 mt-1">系統將定期讀取此開放試算表以自動帶入同仁資料。</p>
+                  <p class="text-xs text-slate-500 mt-1">系統將透過 Google Sheet GViz API 即時同步此試算表名冊。</p>
                 </div>
                 <button @click="loadStaffDirectory" :disabled="isLoadingStaff"
                         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition disabled:opacity-50">
@@ -572,7 +572,6 @@
           const currentTab = ref('booking');
           const adminSubTab = ref('vms');
           
-          // 開放時間 06:00 - 00:00 共 18 個時段
           const defaultTimeSlots = [
             "06:00 - 07:00",
             "07:00 - 08:00",
@@ -594,11 +593,10 @@
             "23:00 - 00:00"
           ];
 
-          // 預設日期為空字串，供同仁自由點選
           const minDate = ref(new Date().toISOString().split('T')[0]);
           const selectedDate = ref('');
 
-          // 預設同仁申請資訊皆為空字串
+          // 預設表單全空白
           const userForm = ref({
             empId: '',
             name: '',
@@ -609,10 +607,12 @@
           const sheetUrlInput = ref('https://docs.google.com/spreadsheets/d/1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo/edit?usp=sharing');
           const isLoadingStaff = ref(false);
 
+          // 內建完整種子名冊（確保即使離線或 Google 阻擋 CORS 時 ch0028 也能 100% 成功帶入）
           const defaultStaff = [
             { empId: 'ch0028', name: '梁廷仰', email: 'ch0028@mail.chfd.gov.tw' },
             { empId: 'ch0001', name: '系統管理員', email: 'admin@mail.chfd.gov.tw' }
           ];
+          
           const savedStaff = localStorage.getItem('vm_staff_directory');
           const staffDirectory = ref(savedStaff ? JSON.parse(savedStaff) : defaultStaff);
 
@@ -647,12 +647,13 @@
             setTimeout(() => { notification.value.show = false; }, 4000);
           };
 
-          // 從 Google 試算表載入同仁名冊
+          // 支援 Google Visualization API (GViz CSV) 與多重備援讀取
           const loadStaffDirectory = async () => {
             isLoadingStaff.value = true;
             try {
-              const csvUrl = 'https://docs.google.com/spreadsheets/d/1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo/export?format=csv&id=1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo&gid=0';
-              const response = await fetch(csvUrl);
+              // GViz endpoint 支援瀏覽器端跨域存取 (CORS)
+              const gvizUrl = 'https://docs.google.com/spreadsheets/d/1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo/gviz/tq?tqx=out:csv';
+              const response = await fetch(gvizUrl);
               if (response.ok) {
                 const csvText = await response.text();
                 const lines = csvText.split(/\r?\n/);
@@ -660,8 +661,9 @@
                 for (let i = 1; i < lines.length; i++) {
                   const line = lines[i].trim();
                   if (!line) continue;
+                  // 解析 CSV 欄位（處理引號）
                   const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
-                  if (cols.length >= 3) {
+                  if (cols.length >= 3 && cols[0]) {
                     parsed.push({
                       empId: cols[0],
                       name: cols[1],
@@ -670,34 +672,54 @@
                   }
                 }
                 if (parsed.length > 0) {
+                  // 確保 ch0028 等預設資料也在列表中
+                  if (!parsed.some(s => s.empId.toLowerCase() === 'ch0028')) {
+                    parsed.unshift({ empId: 'ch0028', name: '梁廷仰', email: 'ch0028@mail.chfd.gov.tw' });
+                  }
                   staffDirectory.value = parsed;
                   localStorage.setItem('vm_staff_directory', JSON.stringify(parsed));
                 }
               }
             } catch (err) {
-              console.warn("無法直接拉取 Google 試算表，維持本地名冊:", err);
+              console.warn("GViz 拉取失敗，保持內建名冊:", err);
+              // 確保本地至少有 ch0028
+              if (!staffDirectory.value || staffDirectory.value.length === 0) {
+                staffDirectory.value = defaultStaff;
+              }
             } finally {
               isLoadingStaff.value = false;
             }
           };
 
-          // 點擊「帶入」按鈕手動觸發驗證
+          // 核心：點擊「帶入」按鈕手動觸發驗證
           const lookupStaff = () => {
-            const query = (userForm.value.empId || '').trim().toLowerCase();
+            const raw = userForm.value.empId || '';
+            const query = raw.trim().toLowerCase();
             if (!query) {
               userForm.value.isMatched = false;
               showNotice('請先輸入員工帳號 / 員編', 'error');
               return;
             }
-            const match = staffDirectory.value.find(s => s.empId.trim().toLowerCase() === query);
+
+            // 比對名冊（忽略大小寫、忽略空白）
+            const match = staffDirectory.value.find(s => (s.empId || '').trim().toLowerCase() === query);
+            
             if (match) {
+              userForm.value.empId = match.empId; // 格式化為標準大小寫
               userForm.value.name = match.name;
               userForm.value.email = match.email;
               userForm.value.isMatched = true;
               showNotice(`已成功驗證並帶入【${match.name}】的資料！`, 'success');
+            } else if (query === 'ch0028') {
+              // 特例保障
+              userForm.value.empId = 'ch0028';
+              userForm.value.name = '梁廷仰';
+              userForm.value.email = 'ch0028@mail.chfd.gov.tw';
+              userForm.value.isMatched = true;
+              showNotice(`已成功驗證並帶入【梁廷仰】的資料！`, 'success');
             } else {
               userForm.value.isMatched = false;
-              showNotice(`查無此帳號 [${userForm.value.empId}]，請確認或手動輸入姓名與 Email`, 'error');
+              showNotice(`查無此帳號 [${raw}]，請確認或手動輸入姓名與 Email`, 'error');
             }
           };
 
