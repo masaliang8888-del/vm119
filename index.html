@@ -85,24 +85,28 @@
                   </button>
                 </div>
                 <div v-if="userForm.isMatched" class="mt-1.5 text-xs text-green-600 font-semibold flex items-center">
-                  ✓ 已成功驗證並帶入名冊資料
+                  ✓ 已成功驗證並鎖定帶入
                 </div>
               </div>
 
-              <!-- 同仁姓名 (Name) -->
+              <!-- 同仁姓名 (Name) - 唯讀鎖定 -->
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">同仁姓名 (Name) <span class="text-red-500">*</span></label>
-                <input v-model="userForm.name" type="text" placeholder="輸入員編後點擊「帶入」或手動輸入" 
-                       :class="userForm.isMatched ? 'bg-slate-50 font-semibold text-slate-800' : ''"
-                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
+                <label class="block text-xs font-semibold text-slate-600 mb-1">
+                  同仁姓名 (Name) <span class="text-red-500">*</span>
+                  <span class="text-[11px] text-slate-400 font-normal ml-1">(系統自動鎖定帶入)</span>
+                </label>
+                <input v-model="userForm.name" type="text" placeholder="請先於上方輸入帳號並點擊「帶入」" readonly
+                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed outline-none select-none" />
               </div>
 
-              <!-- 接收連線資訊 Email (EmailAddress) -->
+              <!-- 接收連線資訊 Email (EmailAddress) - 唯讀鎖定 -->
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">接收連線資訊 Email (EmailAddress) <span class="text-red-500">*</span></label>
-                <input v-model="userForm.email" type="email" placeholder="輸入員編後點擊「帶入」或手動輸入" 
-                       :class="userForm.isMatched ? 'bg-slate-50 font-semibold text-slate-800' : ''"
-                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
+                <label class="block text-xs font-semibold text-slate-600 mb-1">
+                  接收連線資訊 Email (EmailAddress) <span class="text-red-500">*</span>
+                  <span class="text-[11px] text-slate-400 font-normal ml-1">(系統自動鎖定帶入)</span>
+                </label>
+                <input v-model="userForm.email" type="email" placeholder="請先於上方輸入帳號並點擊「帶入」" readonly
+                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed outline-none select-none" />
               </div>
 
               <!-- 預約日期 -->
@@ -155,9 +159,9 @@
                 <span class="text-blue-600">{{ selectedSlots.length }} 小時</span>
               </div>
 
-              <button @click="submitBooking" :disabled="isSubmitting || selectedSlots.length === 0"
+              <button @click="submitBooking" :disabled="isSubmitting || selectedSlots.length === 0 || !userForm.isMatched"
                       class="w-full mt-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed">
-                {{ isSubmitting ? '正在透過 Gmail 寄送連線資訊...' : '確認預約並寄發帳密' }}
+                {{ isSubmitting ? '正在透過 Gmail 寄送連線資訊...' : (!userForm.isMatched ? '請先帶入驗證同仁資料' : '確認預約並寄發帳密') }}
               </button>
             </div>
           </div>
@@ -650,14 +654,12 @@
                 const csvText = await response.text();
                 const lines = csvText.split(/\r?\n/);
                 if (lines.length > 1) {
-                  // 解析第一行 Header 標題以動態定位索引
                   const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
                   
                   let idIdx = headers.findIndex(h => h.includes('samaccountname') || h.includes('account') || h.includes('帳號') || h.includes('員編'));
                   let nameIdx = headers.findIndex(h => h === 'name' || h.includes('姓名') || h.includes('同仁'));
                   let emailIdx = headers.findIndex(h => h.includes('emailaddress') || h.includes('email') || h.includes('mail') || h.includes('信箱'));
 
-                  // 若標題未精準對齊，採預設前三欄位 [0, 1, 2]
                   if (idIdx === -1) idIdx = 0;
                   if (nameIdx === -1) nameIdx = 1;
                   if (emailIdx === -1) emailIdx = 2;
@@ -698,6 +700,8 @@
             const rawId = (userForm.value.empId || '').trim();
             if (!rawId) {
               userForm.value.isMatched = false;
+              userForm.value.name = '';
+              userForm.value.email = '';
               showNotice('請先輸入員工帳號 / 員編 (SamAccountName)', 'error');
               return;
             }
@@ -713,7 +717,9 @@
               showNotice(`已成功驗證！帶入姓名【${match.name}】與信箱【${match.email}】`, 'success');
             } else {
               userForm.value.isMatched = false;
-              showNotice(`查無此 SamAccountName [${rawId}]，請確認或手動輸入`, 'error');
+              userForm.value.name = '';
+              userForm.value.email = '';
+              showNotice(`查無此 SamAccountName [${rawId}]，請確認輸入是否正確`, 'error');
             }
           };
 
@@ -759,6 +765,10 @@
           const toggleSlot = (vmId, time) => {
             if (!selectedDate.value) {
               showNotice('請先在左側選擇「預約日期」', 'error');
+              return;
+            }
+            if (!userForm.value.isMatched) {
+              showNotice('請先於左側輸入員編並點擊「帶入」驗證身份', 'error');
               return;
             }
             const targetVM = vmList.value.find(v => v.vmId === vmId);
@@ -864,7 +874,12 @@
 
           const submitBooking = async () => {
             if (!userForm.value.empId || !userForm.value.name || !userForm.value.email || !selectedDate.value) {
-              showNotice('請完整填寫員編、姓名、Email 及預約日期', 'error');
+              showNotice('請先輸入員編點擊「帶入」，並選擇預約日期', 'error');
+              return;
+            }
+
+            if (!userForm.value.isMatched) {
+              showNotice('請先點擊「帶入」驗證身份', 'error');
               return;
             }
 
