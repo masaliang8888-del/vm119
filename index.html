@@ -15,7 +15,7 @@
     .slot-available { background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; cursor: pointer; }
     .slot-available:hover { background-color: #d1fae5; }
     .slot-selected { background-color: #2563eb !important; border-color: #1d4ed8 !important; color: #ffffff !important; font-weight: bold; }
-    .slot-booked { background-color: #e2e8f0; border: 1px solid #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+    .slot-booked { background-color: #f1f5f9; border: 1px solid #cbd5e1; color: #64748b; cursor: not-allowed; }
   </style>
 </head>
 <body class="bg-slate-100 antialiased min-h-screen">
@@ -181,7 +181,7 @@
               <div class="flex items-center space-x-3 text-xs">
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-green-100 border border-green-400 mr-1.5 inline-block"></span>可預約</span>
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-blue-600 mr-1.5 inline-block"></span>已選取</span>
-                <span class="flex items-center"><span class="w-3 h-3 rounded bg-slate-200 border border-slate-300 mr-1.5 inline-block"></span>已被預約</span>
+                <span class="flex items-center"><span class="w-3 h-3 rounded bg-slate-200 border border-slate-300 mr-1.5 inline-block"></span>已被預約 (顯示人名)</span>
               </div>
             </div>
 
@@ -200,17 +200,19 @@
                     </span>
                   </div>
 
-                  <!-- 06:00 - 00:00 時段清單 -->
+                  <!-- 06:00 - 00:00 時段清單 (被預約時直接顯示同仁姓名) -->
                   <div class="space-y-1.5 max-h-[580px] overflow-y-auto pr-1">
                     <div v-for="timeSlot in defaultTimeSlots" :key="timeSlot" 
                          @click="toggleSlot(vm.vmId, timeSlot)"
                          :class="getSlotClass(vm.vmId, timeSlot)"
                          class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition cursor-pointer border">
-                      <span>{{ timeSlot }}</span>
+                      <span class="font-mono">{{ timeSlot }}</span>
                       <span>
-                        <span v-if="isSlotSelected(vm.vmId, timeSlot)">✓ 已選</span>
-                        <span v-else-if="isSlotBooked(vm.vmId, timeSlot)" class="text-xs text-slate-500">已滿</span>
-                        <span v-else class="text-xs text-green-600">可選</span>
+                        <span v-if="isSlotSelected(vm.vmId, timeSlot)" class="font-bold">✓ 已選取</span>
+                        <span v-else-if="getBookedUser(vm.vmId, timeSlot)" class="text-xs font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                          👤 {{ getBookedUser(vm.vmId, timeSlot).name }}
+                        </span>
+                        <span v-else class="text-xs text-green-600 font-bold">可選</span>
                       </span>
                     </div>
                   </div>
@@ -623,6 +625,7 @@
           const savedGasUrl = localStorage.getItem('gas_webhook_url');
           const gasWebhookUrl = ref(savedGasUrl || 'https://script.google.com/macros/s/AKfycbxq5VjavxQszxCFu8Syi86jQnEN0L-PVjlZdOwZ_Ruhrb1I_D4Spk21aTiVNoOAk9Mp/exec');
 
+          // 預設預約紀錄
           const savedBookings = localStorage.getItem('vm_all_bookings');
           const allBookings = ref(savedBookings ? JSON.parse(savedBookings) : []);
 
@@ -747,9 +750,15 @@
             return bookedCount;
           });
 
+          // 判斷時段是否已被預約，並回傳預約同仁資料
+          const getBookedUser = (vmId, time) => {
+            if (!selectedDate.value) return null;
+            const booking = allBookings.value.find(b => b.date === selectedDate.value && b.vmId === vmId && b.time === time);
+            return booking ? booking : null;
+          };
+
           const isSlotBooked = (vmId, time) => {
-            if (!selectedDate.value) return false;
-            return allBookings.value.some(b => b.date === selectedDate.value && b.vmId === vmId && b.time === time);
+            return Boolean(getBookedUser(vmId, time));
           };
 
           const isSlotSelected = (vmId, time) => {
@@ -776,8 +785,10 @@
               showNotice(`${vmId} 目前處於維護中，無法預約`, 'error');
               return;
             }
-            if (isSlotBooked(vmId, time)) {
-              showNotice('此時段已被其他同仁預約', 'error');
+            
+            const bookedInfo = getBookedUser(vmId, time);
+            if (bookedInfo) {
+              showNotice(`此時段已被同仁【${bookedInfo.name}】預約`, 'error');
               return;
             }
 
@@ -1028,6 +1039,7 @@
             adminLoginForm,
             isSlotBooked,
             isSlotSelected,
+            getBookedUser,
             getSlotClass,
             toggleSlot,
             removeSlot,
