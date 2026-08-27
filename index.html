@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" onerror="this.onerror=null;this.href='';">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
   <style>
-    /* Robust Base Fallback Styles in case external Tailwind is blocked by intranet/firewall */
+    /* Base Fallback Styles */
     * { box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 0; }
     .max-w-7xl { max-width: 80rem; margin-left: auto; margin-right: auto; }
@@ -29,7 +29,7 @@
           </div>
           <div>
             <h1 class="font-bold text-lg leading-tight">線上 VM 電腦預約系統</h1>
-            <p class="text-xs text-slate-400">同仁自助預約 &bull; 每日上限 2 小時 &bull; 自動 Gmail 發送帳密 &bull; 郵件紀錄</p>
+            <p class="text-xs text-slate-400">同仁名冊自動帶入 &bull; 每日上限 2 小時 &bull; 自動 Gmail 發送帳密 &bull; 郵件日誌</p>
           </div>
         </div>
 
@@ -50,7 +50,7 @@
 
     <!-- Main Container -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-      <!-- 提示訊息 Alerts -->
+      <!-- Alerts -->
       <div v-if="notification.show" 
            :class="notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'"
            class="p-4 mb-6 rounded-xl shadow-lg flex items-center justify-between transition-all duration-300">
@@ -63,26 +63,40 @@
         <!-- 左側：申請表單與配額狀況 -->
         <div class="lg:col-span-1 space-y-6">
           <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h2 class="text-lg font-bold text-slate-900 mb-4 border-b pb-2">
-              📝 填寫同仁申請資訊
-            </h2>
+            <div class="flex items-center justify-between border-b pb-2 mb-4">
+              <h2 class="text-lg font-bold text-slate-900">
+                📝 填寫同仁申請資訊
+              </h2>
+              <span v-if="isLoadingStaff" class="text-xs text-blue-600 animate-pulse">載入試算表中...</span>
+              <span v-else class="text-xs text-green-600">已同步名冊 ({{ staffDirectory.length }} 筆)</span>
+            </div>
 
             <div class="space-y-4">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">員工編號 / 帳號 <span class="text-red-500">*</span></label>
-                <input v-model="userForm.empId" @input="updateUserQuota" type="text" placeholder="例如：EMP0088" 
-                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
+                <label class="block text-xs font-semibold text-slate-600 mb-1">
+                  員工帳號 / 員編 <span class="text-red-500">*</span>
+                  <span class="text-[11px] text-blue-600 font-normal ml-1">(輸入後自動帶入姓名與信箱)</span>
+                </label>
+                <div class="relative">
+                  <input v-model="userForm.empId" @input="onEmpIdInput" type="text" placeholder="例如：ch0028" 
+                         class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" />
+                  <span v-if="userForm.isMatched" class="absolute right-3 top-2 text-xs text-green-600 font-bold">
+                    ✓ 已驗證帶入
+                  </span>
+                </div>
               </div>
 
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">同仁姓名 <span class="text-red-500">*</span></label>
-                <input v-model="userForm.name" type="text" placeholder="請輸入姓名" 
+                <input v-model="userForm.name" type="text" placeholder="請輸入姓名或由帳號自動帶入" 
+                       :class="userForm.isMatched ? 'bg-slate-50 font-semibold text-slate-800' : ''"
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
 
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">接收連線資訊 Email <span class="text-red-500">*</span></label>
-                <input v-model="userForm.email" type="email" placeholder="example@company.com" 
+                <input v-model="userForm.email" type="email" placeholder="example@mail.chfd.gov.tw" 
+                       :class="userForm.isMatched ? 'bg-slate-50 font-semibold text-slate-800' : ''"
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
 
@@ -103,7 +117,7 @@
               </div>
               <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
                 <div class="h-2.5 rounded-full transition-all duration-500" 
-                     :style="{ width: `${(todayUsedHours / 2) * 100}%` }"
+                     :style="{{ width: `${(todayUsedHours / 2) * 100}%` }}"
                      :class="todayUsedHours >= 2 ? 'bg-red-500' : 'bg-blue-600'"></div>
               </div>
               <p class="text-xs text-slate-400 mt-2">
@@ -262,12 +276,17 @@
             </div>
           </div>
 
-          <!-- 後台子分頁切換：[VM 帳密設定] vs [郵件寄送紀錄 LOG] -->
+          <!-- 後台子分頁切換 -->
           <div class="flex space-x-2 border-b border-slate-200 pb-3">
             <button @click="adminSubTab = 'vms'" 
                     :class="adminSubTab === 'vms' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
                     class="px-4 py-2 rounded-xl text-xs font-bold transition">
               🖥️ 3 台 VM 帳密維護
+            </button>
+            <button @click="adminSubTab = 'staff'" 
+                    :class="adminSubTab === 'staff' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition">
+              👥 試算表名冊設定 ({{ staffDirectory.length }} 人)
             </button>
             <button @click="adminSubTab = 'logs'" 
                     :class="adminSubTab === 'logs' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
@@ -357,7 +376,60 @@
             </div>
           </div>
 
-          <!-- 子分頁 2：郵件寄送紀錄 (LOG 驗證模組) -->
+          <!-- 子分頁 2：Google 試算表名冊設定 -->
+          <div v-if="adminSubTab === 'staff'" class="space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+                <div>
+                  <h3 class="font-bold text-slate-900 text-base">📊 同仁名冊 Google 試算表連線設定</h3>
+                  <p class="text-xs text-slate-500 mt-1">系統將定期讀取此開放試算表以自動帶入同仁資料。</p>
+                </div>
+                <button @click="loadStaffDirectory" :disabled="isLoadingStaff"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition disabled:opacity-50">
+                  {{ isLoadingStaff ? '同步讀取中...' : '🔄 立即重新同步' }}
+                </button>
+              </div>
+
+              <div class="mb-4">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Google 試算表共用連結 (需設為知道連結的使用者皆可查看)</label>
+                <div class="flex gap-2">
+                  <input v-model="sheetUrlInput" type="text" class="w-full px-3 py-2 text-xs border rounded-lg outline-none font-mono" />
+                  <button @click="saveSheetUrl" class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg whitespace-nowrap">儲存連結</button>
+                </div>
+              </div>
+
+              <!-- 試算表同仁清單預覽 -->
+              <div class="border rounded-xl overflow-hidden">
+                <div class="bg-slate-50 px-4 py-2.5 border-b flex justify-between text-xs font-bold text-slate-600">
+                  <span>已載入同仁名冊預覽</span>
+                  <span>共 {{ staffDirectory.length }} 筆資料</span>
+                </div>
+                <div class="max-h-64 overflow-y-auto">
+                  <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr class="bg-slate-100 text-slate-600 border-b">
+                        <th class="py-2 px-3">帳號 / 員編</th>
+                        <th class="py-2 px-3">同仁姓名</th>
+                        <th class="py-2 px-3">Email 電子郵件</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      <tr v-for="(staff, idx) in staffDirectory" :key="idx" class="hover:bg-slate-50">
+                        <td class="py-2 px-3 font-mono font-bold text-blue-600">{{ staff.empId }}</td>
+                        <td class="py-2 px-3 font-semibold text-slate-800">{{ staff.name }}</td>
+                        <td class="py-2 px-3 text-slate-600">{{ staff.email }}</td>
+                      </tr>
+                      <tr v-if="staffDirectory.length === 0">
+                        <td colspan="3" class="text-center py-6 text-slate-400">目前尚無名冊資料</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 子分頁 3：郵件寄送紀錄 (LOG 驗證模組) -->
           <div v-if="adminSubTab === 'logs'" class="space-y-4">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-5">
@@ -482,11 +554,9 @@
   </div>
 
   <script>
-    // Robust App Bootstrapping with Fallback
     (function() {
       function startApp() {
         if (typeof Vue === 'undefined') {
-          console.error("Vue failed to load from primary CDN. Attempting fallback...");
           var s = document.createElement('script');
           s.src = "https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js";
           s.onload = initVue;
@@ -519,10 +589,22 @@
             const selectedDate = ref(today);
 
             const userForm = ref({
-              empId: 'EMP1001',
+              empId: 'ch0028',
               name: '梁廷仰',
-              email: 'user@company.com'
+              email: 'ch0028@mail.chfd.gov.tw',
+              isMatched: true
             });
+
+            const sheetUrlInput = ref('https://docs.google.com/spreadsheets/d/1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo/edit?usp=sharing');
+            const isLoadingStaff = ref(false);
+
+            // 同仁名冊資料（預設帶入常用資料並支援 Google 試算表動態同步）
+            const defaultStaff = [
+              { empId: 'ch0028', name: '梁廷仰', email: 'ch0028@mail.chfd.gov.tw' },
+              { empId: 'ch0001', name: '系統管理員', email: 'admin@mail.chfd.gov.tw' }
+            ];
+            const savedStaff = localStorage.getItem('vm_staff_directory');
+            const staffDirectory = ref(savedStaff ? JSON.parse(savedStaff) : defaultStaff);
 
             const savedVMs = localStorage.getItem('vm_list_data');
             const vmList = ref(savedVMs ? JSON.parse(savedVMs) : [
@@ -535,9 +617,7 @@
             const gasWebhookUrl = ref(savedGasUrl || 'https://script.google.com/macros/s/AKfycbxq5VjavxQszxCFu8Syi86jQnEN0L-PVjlZdOwZ_Ruhrb1I_D4Spk21aTiVNoOAk9Mp/exec');
 
             const savedBookings = localStorage.getItem('vm_all_bookings');
-            const allBookings = ref(savedBookings ? JSON.parse(savedBookings) : [
-              { date: today, vmId: 'VM-01', time: '09:00 - 10:00', empId: 'EMP9999', name: '陳專員', email: 'chen@company.com' }
-            ]);
+            const allBookings = ref(savedBookings ? JSON.parse(savedBookings) : []);
 
             const savedLogs = localStorage.getItem('vm_email_logs');
             const emailLogs = ref(savedLogs ? JSON.parse(savedLogs) : []);
@@ -555,6 +635,64 @@
             const showNotice = (msg, type = 'success') => {
               notification.value = { show: true, message: msg, type };
               setTimeout(() => { notification.value.show = false; }, 4000);
+            };
+
+            // 從 Google 試算表公開 CSV 載入同仁名冊
+            const loadStaffDirectory = async () => {
+              isLoadingStaff.value = true;
+              try {
+                const csvUrl = 'https://docs.google.com/spreadsheets/d/1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo/export?format=csv&id=1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo&gid=0';
+                const response = await fetch(csvUrl);
+                if (response.ok) {
+                  const csvText = await response.text();
+                  const lines = csvText.split(/\r?\n/);
+                  const parsed = [];
+                  for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    // 解析 CSV 欄位（處理逗號分隔）
+                    const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
+                    if (cols.length >= 3) {
+                      parsed.push({
+                        empId: cols[0],
+                        name: cols[1],
+                        email: cols[2]
+                      });
+                    }
+                  }
+                  if (parsed.length > 0) {
+                    staffDirectory.value = parsed;
+                    localStorage.setItem('vm_staff_directory', JSON.stringify(parsed));
+                    showNotice(`已成功同步 ${parsed.length} 筆同仁名冊資料！`, 'success');
+                  }
+                }
+              } catch (err) {
+                console.warn("無法直接拉取 Google 試算表，維持本地預載名冊:", err);
+              } finally {
+                isLoadingStaff.value = false;
+              }
+            };
+
+            // 當同仁輸入帳號時自動匹配姓名與 Email
+            const onEmpIdInput = () => {
+              const query = userForm.value.empId.trim().toLowerCase();
+              if (!query) {
+                userForm.value.isMatched = false;
+                return;
+              }
+              const match = staffDirectory.value.find(s => s.empId.trim().toLowerCase() === query);
+              if (match) {
+                userForm.value.name = match.name;
+                userForm.value.email = match.email;
+                userForm.value.isMatched = true;
+              } else {
+                userForm.value.isMatched = false;
+              }
+              updateUserQuota();
+            };
+
+            const saveSheetUrl = () => {
+              loadStaffDirectory();
             };
 
             const mailToLink = computed(() => {
@@ -590,12 +728,8 @@
             };
 
             const getSlotClass = (vmId, time) => {
-              if (isSlotSelected(vmId, time)) {
-                return 'slot-selected';
-              }
-              if (isSlotBooked(vmId, time)) {
-                return 'slot-booked';
-              }
+              if (isSlotSelected(vmId, time)) return 'slot-selected';
+              if (isSlotBooked(vmId, time)) return 'slot-booked';
               return 'slot-available';
             };
 
@@ -737,12 +871,11 @@
 
               await sendEmailViaGAS(bookingInfo);
 
-              showNotice(`預約完成！Gmail 已寄出連線帳密並記錄於 LOG`, 'success');
+              showNotice(`預約完成！已透過 Gmail 寄送連線資訊`, 'success');
               selectedSlots.value = [];
               isSubmitting.value = false;
             };
 
-            // 管理員後台 (密碼: 1qaz2wsx3edc4rfv)
             const adminAuth = ref({
               isLoggedIn: false,
               username: ''
@@ -771,12 +904,12 @@
                 vm.newPassword = '';
               }
               localStorage.setItem('vm_list_data', JSON.stringify(vmList.value));
-              showNotice(`主機 [${vm.vmId}] 設定與連線密碼已成功更新並儲存！`, 'success');
+              showNotice(`主機 [${vm.vmId}] 設定與連線密碼已成功更新！`, 'success');
             };
 
             const saveGasUrl = () => {
               localStorage.setItem('gas_webhook_url', gasWebhookUrl.value);
-              showNotice('Google Apps Script 網址已成功儲存！', 'success');
+              showNotice('Google Apps Script 網址已儲存！', 'success');
             };
 
             const filteredLogs = computed(() => {
@@ -821,6 +954,10 @@
               document.body.removeChild(link);
             };
 
+            onMounted(() => {
+              loadStaffDirectory();
+            });
+
             return {
               currentTab,
               adminSubTab,
@@ -842,6 +979,9 @@
               logSearch,
               filteredLogs,
               selectedLogDetail,
+              staffDirectory,
+              isLoadingStaff,
+              sheetUrlInput,
               notification,
               adminAuth,
               adminLoginForm,
@@ -855,6 +995,9 @@
               adminLogout,
               saveVmConfig,
               saveGasUrl,
+              saveSheetUrl,
+              loadStaffDirectory,
+              onEmpIdInput,
               viewLogDetail,
               clearLogs,
               exportLogsCSV
