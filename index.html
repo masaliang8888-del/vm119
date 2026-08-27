@@ -67,35 +67,39 @@
               <h2 class="text-lg font-bold text-slate-900">
                 📝 填寫同仁申請資訊
               </h2>
-              <span v-if="isLoadingStaff" class="text-xs text-blue-600 animate-pulse">載入試算表中...</span>
-              <span v-else class="text-xs text-green-600">已同步名冊 ({{ staffDirectory.length }} 筆)</span>
+              <span v-if="isLoadingStaff" class="text-xs text-blue-600 animate-pulse">名冊同步中...</span>
+              <span v-else class="text-xs text-green-600">名冊已就緒 ({{ staffDirectory.length }} 筆)</span>
             </div>
 
             <div class="space-y-4">
+              <!-- 員工帳號 / 員編 + 帶入按鈕 -->
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">
                   員工帳號 / 員編 <span class="text-red-500">*</span>
-                  <span class="text-[11px] text-blue-600 font-normal ml-1">(輸入後自動帶入姓名與信箱)</span>
                 </label>
-                <div class="relative">
-                  <input v-model="userForm.empId" @input="onEmpIdInput" type="text" placeholder="例如：ch0028" 
-                         class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" />
-                  <span v-if="userForm.isMatched" class="absolute right-3 top-2 text-xs text-green-600 font-bold">
-                    ✓ 已驗證帶入
-                  </span>
+                <div class="flex gap-2">
+                  <input v-model="userForm.empId" @keyup.enter="lookupStaff" type="text" placeholder="例如：ch0028" 
+                         class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                  <button type="button" @click="lookupStaff" 
+                          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm whitespace-nowrap transition">
+                    帶入
+                  </button>
+                </div>
+                <div v-if="userForm.isMatched" class="mt-1 text-xs text-green-600 font-semibold flex items-center">
+                  ✓ 資料驗證成功並已帶入
                 </div>
               </div>
 
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">同仁姓名 <span class="text-red-500">*</span></label>
-                <input v-model="userForm.name" type="text" placeholder="請輸入姓名或由帳號自動帶入" 
+                <input v-model="userForm.name" type="text" placeholder="點擊「帶入」自動填入或手動輸入" 
                        :class="userForm.isMatched ? 'bg-slate-50 font-semibold text-slate-800' : ''"
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
 
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">接收連線資訊 Email <span class="text-red-500">*</span></label>
-                <input v-model="userForm.email" type="email" placeholder="example@mail.chfd.gov.tw" 
+                <input v-model="userForm.email" type="email" placeholder="點擊「帶入」自動填入或手動輸入" 
                        :class="userForm.isMatched ? 'bg-slate-50 font-semibold text-slate-800' : ''"
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
@@ -166,7 +170,7 @@
                   <h2 class="text-lg font-bold text-slate-900">線上 VM 時段預約看板</h2>
                   <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">開放時間 06:00 ~ 00:00</span>
                 </div>
-                <p class="text-xs text-slate-500 mt-0.5">日期：{{ selectedDate }}（共有 3 台線上電腦可預約，每日每主機 18 個時段）</p>
+                <p class="text-xs text-slate-500 mt-0.5">日期：{{ selectedDate || '請先選擇預約日期' }}（共有 3 台線上電腦可預約，每日每主機 18 個時段）</p>
               </div>
               <div class="flex items-center space-x-3 text-xs">
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-green-100 border border-green-400 mr-1.5 inline-block"></span>可預約</span>
@@ -590,15 +594,16 @@
             "23:00 - 00:00"
           ];
 
-          const today = new Date().toISOString().split('T')[0];
-          const minDate = ref(today);
-          const selectedDate = ref(today);
+          // 預設日期為空字串，供同仁自由點選
+          const minDate = ref(new Date().toISOString().split('T')[0]);
+          const selectedDate = ref('');
 
+          // 預設同仁申請資訊皆為空字串
           const userForm = ref({
-            empId: 'ch0028',
-            name: '梁廷仰',
-            email: 'ch0028@mail.chfd.gov.tw',
-            isMatched: true
+            empId: '',
+            name: '',
+            email: '',
+            isMatched: false
           });
 
           const sheetUrlInput = ref('https://docs.google.com/spreadsheets/d/1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo/edit?usp=sharing');
@@ -667,7 +672,6 @@
                 if (parsed.length > 0) {
                   staffDirectory.value = parsed;
                   localStorage.setItem('vm_staff_directory', JSON.stringify(parsed));
-                  showNotice(`已成功同步 ${parsed.length} 筆同仁名冊資料！`, 'success');
                 }
               }
             } catch (err) {
@@ -677,11 +681,12 @@
             }
           };
 
-          // 當同仁輸入帳號時自動匹配姓名與 Email
-          const onEmpIdInput = () => {
-            const query = userForm.value.empId.trim().toLowerCase();
+          // 點擊「帶入」按鈕手動觸發驗證
+          const lookupStaff = () => {
+            const query = (userForm.value.empId || '').trim().toLowerCase();
             if (!query) {
               userForm.value.isMatched = false;
+              showNotice('請先輸入員工帳號 / 員編', 'error');
               return;
             }
             const match = staffDirectory.value.find(s => s.empId.trim().toLowerCase() === query);
@@ -689,10 +694,11 @@
               userForm.value.name = match.name;
               userForm.value.email = match.email;
               userForm.value.isMatched = true;
+              showNotice(`已成功驗證並帶入【${match.name}】的資料！`, 'success');
             } else {
               userForm.value.isMatched = false;
+              showNotice(`查無此帳號 [${userForm.value.empId}]，請確認或手動輸入姓名與 Email`, 'error');
             }
-            updateUserQuota();
           };
 
           const saveSheetUrl = () => {
@@ -716,7 +722,7 @@
           });
 
           const todayUsedHours = computed(() => {
-            if (!userForm.value.empId) return 0;
+            if (!userForm.value.empId || !selectedDate.value) return 0;
             const bookedCount = allBookings.value.filter(
               b => b.date === selectedDate.value && b.empId.trim().toUpperCase() === userForm.value.empId.trim().toUpperCase()
             ).length;
@@ -724,6 +730,7 @@
           });
 
           const isSlotBooked = (vmId, time) => {
+            if (!selectedDate.value) return false;
             return allBookings.value.some(b => b.date === selectedDate.value && b.vmId === vmId && b.time === time);
           };
 
@@ -738,6 +745,10 @@
           };
 
           const toggleSlot = (vmId, time) => {
+            if (!selectedDate.value) {
+              showNotice('請先在左側選擇「預約日期」', 'error');
+              return;
+            }
             const targetVM = vmList.value.find(v => v.vmId === vmId);
             if (!targetVM || !targetVM.isActive) {
               showNotice(`${vmId} 目前處於維護中，無法預約`, 'error');
@@ -840,8 +851,8 @@
           };
 
           const submitBooking = async () => {
-            if (!userForm.value.empId || !userForm.value.name || !userForm.value.email) {
-              showNotice('請完整填寫員編、姓名及 Email', 'error');
+            if (!userForm.value.empId || !userForm.value.name || !userForm.value.email || !selectedDate.value) {
+              showNotice('請完整填寫員編、姓名、Email 及預約日期', 'error');
               return;
             }
 
@@ -945,6 +956,7 @@
               showNotice('目前無任何紀錄可匯出', 'error');
               return;
             }
+            const todayStr = new Date().toISOString().split('T')[0];
             let csv = "\uFEFFLog ID,發送時間,收件人姓名,收件人Email,主機,預約日期,時段,發信管道,狀態\n";
             emailLogs.value.forEach(l => {
               csv += `"${l.logId}","${l.timestamp}","${l.recipientName}","${l.recipientEmail}","${l.vmId}","${l.bookingDate}","${l.timeSlots}","${l.channel}","${l.status}"\n`;
@@ -952,7 +964,7 @@
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `VM_Email_Logs_${today}.csv`);
+            link.setAttribute("download", `VM_Email_Logs_${todayStr}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1001,7 +1013,7 @@
             saveGasUrl,
             saveSheetUrl,
             loadStaffDirectory,
-            onEmpIdInput,
+            lookupStaff,
             viewLogDetail,
             clearLogs,
             exportLogsCSV
