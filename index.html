@@ -15,7 +15,7 @@
     .slot-available { background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; cursor: pointer; }
     .slot-available:hover { background-color: #d1fae5; }
     .slot-selected { background-color: #2563eb !important; border-color: #1d4ed8 !important; color: #ffffff !important; font-weight: bold; }
-    .slot-booked { background-color: #f1f5f9; border: 1px solid #cbd5e1; color: #64748b; cursor: not-allowed; }
+    .slot-booked { background-color: #ffe4e6 !important; border: 1px solid #fecdd3 !important; color: #9f1239 !important; cursor: not-allowed !important; opacity: 0.95; }
   </style>
 </head>
 <body class="bg-slate-100 antialiased min-h-screen">
@@ -29,7 +29,7 @@
           </div>
           <div>
             <h1 class="font-bold text-lg leading-tight">線上 VM 電腦預約系統</h1>
-            <p class="text-xs text-slate-400">開放時間 06:00 - 00:00 &bull; 每日上限 2 小時 &bull; 自動 Gmail 發送帳密 &bull; 郵件日誌</p>
+            <p class="text-xs text-slate-400">Google 試算表雲端資料庫同步 &bull; 每日上限 2 小時 &bull; 自動 Gmail 發送帳密</p>
           </div>
         </div>
 
@@ -93,9 +93,9 @@
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">
                   同仁姓名 (Name) <span class="text-red-500">*</span>
-                  <span class="text-[11px] text-slate-400 font-normal ml-1">(系統自動鎖定帶入)</span>
+                  <span class="text-[11px] text-slate-400 font-normal ml-1">(唯讀鎖定)</span>
                 </label>
-                <input v-model="userForm.name" type="text" placeholder="請先於上方輸入帳號並點擊「帶入」" readonly
+                <input v-model="userForm.name" type="text" placeholder="請先輸入帳號並點擊「帶入」" readonly
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed outline-none select-none" />
               </div>
 
@@ -103,16 +103,16 @@
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">
                   接收連線資訊 Email (EmailAddress) <span class="text-red-500">*</span>
-                  <span class="text-[11px] text-slate-400 font-normal ml-1">(系統自動鎖定帶入)</span>
+                  <span class="text-[11px] text-slate-400 font-normal ml-1">(唯讀鎖定)</span>
                 </label>
-                <input v-model="userForm.email" type="email" placeholder="請先於上方輸入帳號並點擊「帶入」" readonly
+                <input v-model="userForm.email" type="email" placeholder="請先輸入帳號並點擊「帶入」" readonly
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 bg-slate-100 text-slate-700 font-semibold cursor-not-allowed outline-none select-none" />
               </div>
 
               <!-- 預約日期 -->
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">預約日期 <span class="text-red-500">*</span></label>
-                <input v-model="selectedDate" @change="updateUserQuota" type="date" :min="minDate"
+                <input v-model="selectedDate" @change="onDateChange" type="date" :min="minDate"
                        class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 outline-none" />
               </div>
             </div>
@@ -161,7 +161,7 @@
 
               <button @click="submitBooking" :disabled="isSubmitting || selectedSlots.length === 0 || !userForm.isMatched"
                       class="w-full mt-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed">
-                {{ isSubmitting ? '正在透過 Gmail 寄送連線資訊...' : (!userForm.isMatched ? '請先帶入驗證同仁資料' : '確認預約並寄發帳密') }}
+                {{ isSubmitting ? '寫入資料庫並透過 Gmail 發送中...' : (!userForm.isMatched ? '請先帶入驗證同仁資料' : '確認預約並寄發帳密') }}
               </button>
             </div>
           </div>
@@ -176,12 +176,12 @@
                   <h2 class="text-lg font-bold text-slate-900">線上 VM 時段預約看板</h2>
                   <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">開放時間 06:00 ~ 00:00</span>
                 </div>
-                <p class="text-xs text-slate-500 mt-0.5">日期：{{ selectedDate || '請先選擇預約日期' }}（共有 3 台線上電腦可預約，每日每主機 18 個時段）</p>
+                <p class="text-xs text-slate-500 mt-0.5">日期：{{ selectedDate || '請先選擇預約日期' }}（即時同步資料庫，已被借出之時段其他人無法重複借用）</p>
               </div>
               <div class="flex items-center space-x-3 text-xs">
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-green-100 border border-green-400 mr-1.5 inline-block"></span>可預約</span>
                 <span class="flex items-center"><span class="w-3 h-3 rounded bg-blue-600 mr-1.5 inline-block"></span>已選取</span>
-                <span class="flex items-center"><span class="w-3 h-3 rounded bg-slate-200 border border-slate-300 mr-1.5 inline-block"></span>已被預約 (顯示人名)</span>
+                <span class="flex items-center"><span class="w-3 h-3 rounded bg-rose-200 border border-rose-300 mr-1.5 inline-block"></span>已借出 (顯示同仁人名)</span>
               </div>
             </div>
 
@@ -200,19 +200,20 @@
                     </span>
                   </div>
 
-                  <!-- 06:00 - 00:00 時段清單 (被預約時直接顯示同仁姓名) -->
+                  <!-- 06:00 - 00:00 時段清單 -->
                   <div class="space-y-1.5 max-h-[580px] overflow-y-auto pr-1">
                     <div v-for="timeSlot in defaultTimeSlots" :key="timeSlot" 
                          @click="toggleSlot(vm.vmId, timeSlot)"
                          :class="getSlotClass(vm.vmId, timeSlot)"
-                         class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition cursor-pointer border">
+                         class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition border select-none">
                       <span class="font-mono">{{ timeSlot }}</span>
                       <span>
                         <span v-if="isSlotSelected(vm.vmId, timeSlot)" class="font-bold">✓ 已選取</span>
-                        <span v-else-if="getBookedUser(vm.vmId, timeSlot)" class="text-xs font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                        <!-- 關鍵：資料庫有借用紀錄時，直接顯示借用同仁姓名標籤 -->
+                        <span v-else-if="getBookedUser(vm.vmId, timeSlot)" class="text-xs font-bold text-rose-800 bg-rose-100/90 px-2 py-0.5 rounded border border-rose-300 shadow-sm">
                           👤 {{ getBookedUser(vm.vmId, timeSlot).name }}
                         </span>
-                        <span v-else class="text-xs text-green-600 font-bold">可選</span>
+                        <span v-else class="text-xs text-green-700 font-bold">可選</span>
                       </span>
                     </div>
                   </div>
@@ -280,9 +281,9 @@
           <div class="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
             <div>
               <h2 class="text-xl font-bold text-slate-900">
-                🛡️ VM 伺服器管理與發信審計中樞
+                🛡️ VM 伺服器管理與資料庫審計中樞
               </h2>
-              <p class="text-xs text-slate-500 mt-1">管理 3 台 VM 帳密連線資訊，並追蹤所有同仁郵件通知發送紀錄 (LOG)。</p>
+              <p class="text-xs text-slate-500 mt-1">管理 3 台 VM 帳密連線資訊，並追蹤所有同仁資料庫預約紀錄與郵件 LOG。</p>
             </div>
             <div class="flex items-center space-x-3">
               <span class="text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border">
@@ -301,23 +302,32 @@
                     class="px-4 py-2 rounded-xl text-xs font-bold transition">
               🖥️ 3 台 VM 帳密維護
             </button>
+            <button @click="adminSubTab = 'database'" 
+                    :class="adminSubTab === 'database' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2">
+              <span>🗄️ 全域借用紀錄資料庫</span>
+              <span class="ml-1 px-1.5 py-0.5 rounded-full text-xs" 
+                    :class="adminSubTab === 'database' ? 'bg-indigo-800 text-white' : 'bg-indigo-100 text-indigo-700'">
+                {{ allBookings.length }}
+              </span>
+            </button>
             <button @click="adminSubTab = 'staff'" 
                     :class="adminSubTab === 'staff' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
                     class="px-4 py-2 rounded-xl text-xs font-bold transition">
-              👥 試算表名冊設定 ({{ staffDirectory.length }} 人)
+              👥 同仁名冊資料庫 ({{ staffDirectory.length }} 人)
             </button>
             <button @click="adminSubTab = 'logs'" 
                     :class="adminSubTab === 'logs' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'"
                     class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2">
-              <span>📋 郵件寄送紀錄 (LOG 驗證)</span>
-              <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs" 
+              <span>📋 郵件發信 LOG</span>
+              <span class="ml-1 px-1.5 py-0.5 rounded-full text-xs" 
                     :class="adminSubTab === 'logs' ? 'bg-indigo-800 text-white' : 'bg-indigo-100 text-indigo-700'">
                 {{ emailLogs.length }}
               </span>
             </button>
           </div>
 
-          <!-- 子分頁 1：VM 設定與 GAS 網址配置 -->
+          <!-- 子分頁 1：VM 設定 -->
           <div v-if="adminSubTab === 'vms'" class="space-y-6">
             <div class="bg-green-50 border border-green-200 rounded-2xl p-6">
               <div class="flex items-center justify-between mb-2">
@@ -393,12 +403,67 @@
             </div>
           </div>
 
-          <!-- 子分頁 2：Google 試算表名冊設定 -->
+          <!-- 子分頁 2：全域借用紀錄資料庫 (所有同仁預約清單) -->
+          <div v-if="adminSubTab === 'database'" class="space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+                <div>
+                  <h3 class="font-bold text-slate-900 text-base">🗄️ 全域 VM 借用紀錄資料庫 (即時鎖定依據)</h3>
+                  <p class="text-xs text-slate-500 mt-1">此資料庫保存所有同仁成功預約之時段，用於前台看板人名呈現與防重複借用鎖定。</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button @click="exportBookingsCSV" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg shadow-sm transition">
+                    匯出預約名單 CSV
+                  </button>
+                  <button @click="clearAllBookings" class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 text-xs font-bold rounded-lg transition">
+                    清空借用紀錄
+                  </button>
+                </div>
+              </div>
+
+              <!-- 預約清單表格 -->
+              <div class="overflow-x-auto border rounded-xl">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-slate-100 text-slate-600 border-b font-bold">
+                      <th class="py-2.5 px-3.5">預約日期</th>
+                      <th class="py-2.5 px-3.5">借用主機</th>
+                      <th class="py-2.5 px-3.5">借用時段</th>
+                      <th class="py-2.5 px-3.5">同仁員編 (SamAccountName)</th>
+                      <th class="py-2.5 px-3.5">同仁姓名 (Name)</th>
+                      <th class="py-2.5 px-3.5">通知信箱 (EmailAddress)</th>
+                      <th class="py-2.5 px-3.5 text-center">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 font-sans">
+                    <tr v-for="(b, idx) in allBookings" :key="idx" class="hover:bg-slate-50">
+                      <td class="py-2.5 px-3.5 font-medium">{{ b.date }}</td>
+                      <td class="py-2.5 px-3.5 font-bold text-blue-600">{{ b.vmId }}</td>
+                      <td class="py-2.5 px-3.5 font-mono">{{ b.time }}</td>
+                      <td class="py-2.5 px-3.5 font-mono">{{ b.empId }}</td>
+                      <td class="py-2.5 px-3.5 font-bold text-slate-800">👤 {{ b.name }}</td>
+                      <td class="py-2.5 px-3.5 text-slate-500">{{ b.email }}</td>
+                      <td class="py-2.5 px-3.5 text-center">
+                        <button @click="cancelBooking(idx)" class="text-red-500 hover:text-red-700 font-bold text-xs">
+                          釋放時段
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="allBookings.length === 0">
+                      <td colspan="7" class="text-center py-6 text-slate-400">目前尚無任何借用紀錄</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 子分頁 3：同仁名冊設定 -->
           <div v-if="adminSubTab === 'staff'" class="space-y-4">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
                 <div>
-                  <h3 class="font-bold text-slate-900 text-base">📊 同仁名冊資料維護 (對應 AD 欄位)</h3>
+                  <h3 class="font-bold text-slate-900 text-base">👥 同仁名冊資料維護 (對應 AD 欄位)</h3>
                   <p class="text-xs text-slate-500 mt-1">
                     支援欄位：<code class="text-blue-600 font-bold">SamAccountName</code> (員編)、<code class="text-blue-600 font-bold">Name</code> (姓名)、<code class="text-blue-600 font-bold">EmailAddress</code> (信箱)
                   </p>
@@ -438,7 +503,7 @@
             </div>
           </div>
 
-          <!-- 子分頁 3：郵件寄送紀錄 (LOG 驗證模組) -->
+          <!-- 子分頁 4：郵件寄送紀錄 (LOG 驗證模組) -->
           <div v-if="adminSubTab === 'logs'" class="space-y-4">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-5">
@@ -603,7 +668,7 @@
             isMatched: false
           });
 
-          // 內建名冊預設資料庫 (標準欄位對應)
+          // 內建名冊預設資料庫
           const builtInDirectory = [
             { empId: 'ch0028', name: '梁廷仰', email: 'ch0028@mail.chfd.gov.tw' },
             { empId: 'ch0001', name: '系統管理員', email: 'admin@mail.chfd.gov.tw' },
@@ -625,7 +690,7 @@
           const savedGasUrl = localStorage.getItem('gas_webhook_url');
           const gasWebhookUrl = ref(savedGasUrl || 'https://script.google.com/macros/s/AKfycbxq5VjavxQszxCFu8Syi86jQnEN0L-PVjlZdOwZ_Ruhrb1I_D4Spk21aTiVNoOAk9Mp/exec');
 
-          // 預設預約紀錄
+          // 全局借用紀錄資料庫 (存放所有已借出時段)
           const savedBookings = localStorage.getItem('vm_all_bookings');
           const allBookings = ref(savedBookings ? JSON.parse(savedBookings) : []);
 
@@ -647,7 +712,7 @@
             setTimeout(() => { notification.value.show = false; }, 4000);
           };
 
-          // 載入 Google 試算表名冊 (精準偵測 SamAccountName, Name, EmailAddress 欄位標題)
+          // 載入 Google 試算表同仁名冊
           const loadStaffDirectory = async () => {
             try {
               const sheetId = '1D86iJOAXh4xK620EPBaG3CdT4yPBMtctIOb2LG--RDo';
@@ -726,6 +791,10 @@
             }
           };
 
+          const onDateChange = () => {
+            selectedSlots.value = [];
+          };
+
           const mailToLink = computed(() => {
             if (!latestBookingResult.value) return '#';
             const r = latestBookingResult.value;
@@ -742,6 +811,7 @@
             return `mailto:${r.email}?subject=${subject}&body=${body}`;
           });
 
+          // 當日已用額度 (以員編 + 選擇的日期統計)
           const todayUsedHours = computed(() => {
             if (!userForm.value.empId || !selectedDate.value) return 0;
             const bookedCount = allBookings.value.filter(
@@ -750,11 +820,11 @@
             return bookedCount;
           });
 
-          // 判斷時段是否已被預約，並回傳預約同仁資料
+          // 核心資料庫比對：查詢該日期、主機、時段的借用人
           const getBookedUser = (vmId, time) => {
             if (!selectedDate.value) return null;
-            const booking = allBookings.value.find(b => b.date === selectedDate.value && b.vmId === vmId && b.time === time);
-            return booking ? booking : null;
+            const record = allBookings.value.find(b => b.date === selectedDate.value && b.vmId === vmId && b.time === time);
+            return record ? record : null;
           };
 
           const isSlotBooked = (vmId, time) => {
@@ -771,6 +841,7 @@
             return 'slot-available';
           };
 
+          // 點擊時段：若資料庫已有紀錄，直接阻擋點選
           const toggleSlot = (vmId, time) => {
             if (!selectedDate.value) {
               showNotice('請先在左側選擇「預約日期」', 'error');
@@ -786,9 +857,10 @@
               return;
             }
             
-            const bookedInfo = getBookedUser(vmId, time);
-            if (bookedInfo) {
-              showNotice(`此時段已被同仁【${bookedInfo.name}】預約`, 'error');
+            // 檢查資料庫是否已借出
+            const bookedRecord = getBookedUser(vmId, time);
+            if (bookedRecord) {
+              showNotice(`該時段已被【${bookedRecord.name}】借用，無法重複預約！`, 'error');
               return;
             }
 
@@ -804,7 +876,7 @@
 
               const currentTotal = todayUsedHours.value + selectedSlots.value.length;
               if (currentTotal >= 2) {
-                showNotice(`每位同仁每日申請上限為 2 小時（目前已預約 ${todayUsedHours.value} 小時）`, 'error');
+                showNotice(`每位同仁每日申請上限為 2 小時（目前已借用 ${todayUsedHours.value} 小時）`, 'error');
                 return;
               }
 
@@ -836,6 +908,7 @@
 
             try {
               const payload = {
+                action: 'book',
                 to_name: bookingData.name,
                 to_email: bookingData.email,
                 vm_id: bookingData.vmId,
@@ -883,6 +956,7 @@
             localStorage.setItem('vm_email_logs', JSON.stringify(emailLogs.value));
           };
 
+          // 確認送出預約：寫入借用紀錄資料庫
           const submitBooking = async () => {
             if (!userForm.value.empId || !userForm.value.name || !userForm.value.email || !selectedDate.value) {
               showNotice('請先輸入員編點擊「帶入」，並選擇預約日期', 'error');
@@ -896,6 +970,7 @@
 
             isSubmitting.value = true;
 
+            // 1. 寫入本地及全域借用紀錄資料庫
             selectedSlots.value.forEach(slot => {
               allBookings.value.push({
                 date: selectedDate.value,
@@ -922,11 +997,49 @@
             };
             latestBookingResult.value = bookingInfo;
 
+            // 2. 寄送 Gmail 通知信
             await sendEmailViaGAS(bookingInfo);
 
-            showNotice(`預約完成！已透過 Gmail 寄送連線資訊`, 'success');
+            showNotice(`預約完成！時段已寫入資料庫並標記為【${userForm.value.name}】`, 'success');
             selectedSlots.value = [];
             isSubmitting.value = false;
+          };
+
+          // 管理員後台取消/釋放特定借用時段
+          const cancelBooking = (index) => {
+            const target = allBookings.value[index];
+            if (confirm(`確定要釋放【${target.name}】在 ${target.date} ${target.vmId} ${target.time} 的借用時段嗎？`)) {
+              allBookings.value.splice(index, 1);
+              localStorage.setItem('vm_all_bookings', JSON.stringify(allBookings.value));
+              showNotice('已成功釋放該時段，前台已恢復為可選狀態', 'success');
+            }
+          };
+
+          const clearAllBookings = () => {
+            if (confirm('確定要清空所有 VM 的借用紀錄資料庫嗎？（所有時段將被重置為可選）')) {
+              allBookings.value = [];
+              localStorage.removeItem('vm_all_bookings');
+              showNotice('借用資料庫已清空', 'success');
+            }
+          };
+
+          const exportBookingsCSV = () => {
+            if (allBookings.value.length === 0) {
+              showNotice('目前無任何借用紀錄可匯出', 'error');
+              return;
+            }
+            const todayStr = new Date().toISOString().split('T')[0];
+            let csv = "\uFEFF預約日期,主機名稱,預約時段,同仁員編(SamAccountName),同仁姓名(Name),通知信箱(EmailAddress)\n";
+            allBookings.value.forEach(b => {
+              csv += `"${b.date}","${b.vmId}","${b.time}","${b.empId}","${b.name}","${b.email}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `VM_Bookings_Database_${todayStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
           };
 
           const adminAuth = ref({
@@ -1044,6 +1157,10 @@
             toggleSlot,
             removeSlot,
             submitBooking,
+            cancelBooking,
+            clearAllBookings,
+            exportBookingsCSV,
+            onDateChange,
             adminLogin,
             adminLogout,
             saveVmConfig,
